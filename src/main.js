@@ -404,7 +404,7 @@ async function main() {
     // Outputs
     // ****************************************************************************
 
-    mkdirSync('./output', { recursive: true });
+    mkdirSync(outputFolderPath, { recursive: true });
 
     // Output GraphQL schema no directives
     if (inputGraphQLSchema != '') {
@@ -422,7 +422,7 @@ async function main() {
             writeFileSync(outputSchemaFile, outputSchema);
             if (!quiet) console.log('Wrote GraphQL schema to file: ' + yellow(outputSchemaFile));
         } catch (err) {
-            console.error('Error writing GraphQL schema to file: ' + outputSchemaFile);    
+            console.error('Error writing GraphQL schema to file: ' + outputSchemaFile + ': ' + err);
         }
 
 
@@ -440,7 +440,7 @@ async function main() {
             writeFileSync(outputSourceSchemaFile, outputSourceSchema);
             if (!quiet) console.log('Wrote GraphQL schema to file: ' + yellow(outputSourceSchemaFile));
         } catch (err) {
-            console.error('Error writing GraphQL schema to file: ' + outputSourceSchemaFile);    
+            console.error('Error writing GraphQL schema to file: ' + outputSourceSchemaFile + ': ' + err);
         }
 
 
