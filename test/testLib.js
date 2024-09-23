@@ -20,7 +20,10 @@ async function queryNeptune(q, language, host, port, param) {
 
 
 function readJSONFile(fileName) {
-    return JSON.parse(fs.readFileSync(fileName, 'utf8'));
+    let text = fs.readFileSync(fileName, 'utf8');
+    text = text.replace('<AIR_ROUTES_DB_HOST>', process.env.AIR_ROUTES_DB_HOST);
+    text = text.replace('<AIR_ROUTES_DB_PORT>', process.env.AIR_ROUTES_DB_PORT);
+    return JSON.parse(text);
 }
 
 
