@@ -306,7 +306,7 @@ async function main() {
         
         let neptuneRegionParts = inputGraphDBSchemaNeptuneEndpoint.split('.');
         let neptuneRegion = '';
-        if (neptuneType == 'neptune-db')
+        if (neptuneType === 'neptune-db')
             neptuneRegion = neptuneRegionParts[2];
         else
             neptuneRegion = neptuneRegionParts[1];
@@ -558,7 +558,11 @@ async function main() {
                 outputLambdaPackagePath = '/../templates/Lambda4AppSyncHTTP';
             break;
             case 'sdk':
-                outputLambdaPackagePath = '/../templates/Lambda4AppSyncSDK';
+                if (neptuneType === 'neptune-db') {
+                    outputLambdaPackagePath = '/../templates/Lambda4AppSyncSDK';
+                } else {
+                    outputLambdaPackagePath = '/../templates/Lambda4AppSyncGraphSDK';
+                }
             break;
         }
 

@@ -67,7 +67,7 @@ let NEPTUNE_PORT = null;
 let NEPTUNE_DBSubnetGroup = null;
 let NEPTUNE_DBSubnetIds = [];
 let NEPTUNE_VpcSecurityGroupId = null;
-let NEPTUME_IAM_AUTH = false;
+let NEPTUNE_IAM_AUTH = false;
 let NEPTUNE_CURRENT_VERSION = '';
 let NEPTUNE_CURRENT_IAM = false;
 let NEPTUNE_IAM_POLICY_RESOURCE = '*';
@@ -274,7 +274,7 @@ async function createLambdaRole() {
     loggerLog(msg);
 
 
-    if (NEPTUME_IAM_AUTH) {
+    if (NEPTUNE_IAM_AUTH) {
 
         let action = [];
         if (NEPTUNE_TYPE == 'neptune-db') {
@@ -364,68 +364,45 @@ async function createDeploymentPackage(folderPath) {
     return fileContent;    
 }
 
-
 async function createLambdaFunction() {
-    const lambdaClient = new LambdaClient({region: REGION});
-    
-    msg = 'Creating Lambda function ...';
-    if (!quiet) spinner = ora(msg).start();
-    
-    let params;
-    if (NEPTUME_IAM_AUTH) {
-        params = {
-            Code: {          
-                ZipFile: ZIP
+    if (!quiet) spinner = ora('Creating Lambda function ...').start();
+    let lambdaName = NAME +'LambdaFunction';
+    let params = {
+        Code: {
+            ZipFile: ZIP
+        },
+        FunctionName: lambdaName,
+        Handler: 'index.handler',
+        Role: LAMBDA_ROLE,
+        Runtime: 'nodejs18.x',
+        Description: 'Neptune GraphQL Resolver for AppSync',
+        Timeout: 15,
+        MemorySize: 128,
+        Environment: {
+            Variables: {
+                "NEPTUNE_HOST": NEPTUNE_HOST,
+                "NEPTUNE_PORT": NEPTUNE_PORT,
+                "NEPTUNE_IAM_AUTH_ENABLED": NEPTUNE_IAM_AUTH.toString(),
+                "LOGGING_ENABLED": "false",
+                "NEPTUNE_TYPE": NEPTUNE_TYPE,
+                "NEPTUNE_DB_NAME": NEPTUNE_DB_NAME,
+                "NEPTUNE_REGION": REGION,
+                "NEPTUNE_DOMAIN": parseDomain(),
             },
-            FunctionName: NAME +'LambdaFunction',
-            Handler: 'index.handler',
-            Role: LAMBDA_ROLE,        
-            Runtime: 'nodejs18.x',
-            Description: 'Neptune GraphQL Resolver for AppSync',
-            Timeout: 15,
-            MemorySize: 128,            
-            Environment: {
-                Variables: {
-                    "NEPTUNE_HOST": NEPTUNE_HOST,
-                    "NEPTUNE_PORT": NEPTUNE_PORT,
-                    "NEPTUNE_IAM_AUTH_ENABLED": "true",
-                    "LOGGING_ENABLED": "false",
-                    "NEPTUNE_TYPE": NEPTUNE_TYPE
-                },
-            },
-        };
-    } else {
-        params = {
-            Code: {          
-                ZipFile: ZIP
-            },
-            FunctionName: NAME +'LambdaFunction',
-            Handler: 'index.handler',
-            Role: LAMBDA_ROLE,        
-            Runtime: 'nodejs18.x',
-            Description: 'Neptune GraphQL Resolver for AppSync',
-            Timeout: 15,
-            MemorySize: 128,
-            VpcConfig: {
-                SubnetIds: NEPTUNE_DBSubnetIds,
-                SecurityGroupIds: [NEPTUNE_VpcSecurityGroupId]
-            },
-            Environment: {
-                Variables: {
-                    "NEPTUNE_HOST": NEPTUNE_HOST,
-                    "NEPTUNE_PORT": NEPTUNE_PORT,
-                    "NEPTUNE_IAM_AUTH_ENABLED": "false",
-                    "LOGGING_ENABLED": "false"
-                },
-            },
-        };
-    }
+        },
+    };
 
-    const data = await lambdaClient.send(new LambdaCreateFunctionCommand(params));    
-    //await sleep(5000);    
+    if (!NEPTUNE_IAM_AUTH) {
+        params.VpcConfig = {
+            SubnetIds: NEPTUNE_DBSubnetIds,
+            SecurityGroupIds: [NEPTUNE_VpcSecurityGroupId]
+        }
+    }
+    const lambdaClient = new LambdaClient({region: REGION});
+    const data = await lambdaClient.send(new LambdaCreateFunctionCommand(params));
     LAMBDA_ARN = data.FunctionArn;
-    storeResource({LambdaFunction: NAME +'LambdaFunction'});
-    msg = 'Lambda Name: ' + yellow(NAME +'LambdaFunction') + ' ARN: ' + yellow(LAMBDA_ARN);
+    storeResource({LambdaFunction: lambdaName});
+    msg = 'Lambda Created: ' + yellow(lambdaName);
     if (!quiet) spinner.succeed(msg);
     loggerLog(msg);    
 }
@@ -939,7 +916,7 @@ async function createUpdateAWSpipeline (    pipelineName,
                                             outputFolderPath, 
                                             neptuneType) {    
 
-    NAME = pipelineName;    
+    NAME = pipelineName;
     REGION = neptuneDBregion;
     NEPTUNE_DB_NAME = neptuneDBName;
     APPSYNC_SCHEMA = appSyncSchema;
@@ -948,7 +925,7 @@ async function createUpdateAWSpipeline (    pipelineName,
     RESOURCES_FILE = `${outputFolderPath}/${NAME}-resources.json`;
     ADD_MUTATIONS = addMutations;
     quiet = quietI;
-    NEPTUME_IAM_AUTH = isNeptuneIAMAuth;
+    NEPTUNE_IAM_AUTH = isNeptuneIAMAuth;
     NEPTUNE_HOST = neptuneHost;
     NEPTUNE_PORT = neptunePort;
     thisOutputFolderPath = outputFolderPath;
@@ -1091,6 +1068,20 @@ async function createUpdateAWSpipeline (    pipelineName,
         loggerLog(msg, !quiet);
         await updateAppSyncAPI(resources);
     }
+}
+
+function parseDomain() {
+    let parts = NEPTUNE_HOST.split('.');
+    const MIN_HOST_PARTS = 5;
+    if (parts.length < MIN_HOST_PARTS) {
+        throw Error('Cannot parse domain from ' + NEPTUNE_HOST + ' because it has ' + parts.length + ' parts but expected at least ' + MIN_HOST_PARTS);
+    }
+    // last 3 parts of the host make up the domain
+    // ie. neptune.amazonaws.com or neptune-graph.amazonaws.com
+    let domainParts = parts.splice(parts.length - 3, 3);
+    let domain = domainParts.join('.');
+    loggerLog('Parsed domain: ' + domain)
+    return domain;
 }
 
 export { createUpdateAWSpipeline, getNeptuneClusterinfoBy, removeAWSpipelineResources }
