@@ -1,7 +1,6 @@
-import { NeptuneGraphClient, ExecuteQueryCommand } from "@aws-sdk/client-neptune-graph";
-import { resolveGraphDBQueryFromAppSyncEvent } from './output.resolver.graphql.js';
+import {ExecuteQueryCommand, NeptuneGraphClient} from "@aws-sdk/client-neptune-graph";
+import {resolveGraphDBQueryFromAppSyncEvent} from './output.resolver.graphql.js';
 
-const LOGGING_ENABLED = process.env.LOGGING_ENABLED;
 const PROTOCOL = 'https';
 const QUERY_LANGUAGE = 'OPEN_CYPHER';
 const RESOLVER_LANGUAGE = 'opencypher';
@@ -13,13 +12,12 @@ function getClient() {
         return client;
     }
     try {
-        client = new NeptuneGraphClient({
-            port: `${process.env.NEPTUNE_PORT}`,
-            host: `${process.env.NEPTUNE_DOMAIN}`,
-            region: `${process.env.NEPTUNE_REGION}`,
+        return new NeptuneGraphClient({
+            port: process.env.NEPTUNE_PORT,
+            host: process.env.NEPTUNE_DOMAIN,
+            region: process.env.NEPTUNE_REGION,
             protocol: PROTOCOL,
         });
-        return client;
     } catch (error) {
         return onError('Error instantiating NeptuneGraphClient: ', error);
     }
@@ -39,34 +37,50 @@ function onError(context, error) {
     };
 }
 
-export const handler = async(event) => {
-    if (LOGGING_ENABLED) console.log(event);
-    let resolver;
+function log(message) {
+    if (process.env.LOGGING_ENABLED) {
+        console.log(message);
+    }
+}
 
+function resolveGraphQuery(event) {
     try {
-        resolver = resolveGraphDBQueryFromAppSyncEvent(event);
-        if (LOGGING_ENABLED) console.log('Resolver: ' + JSON.stringify(resolver, null, 2));
+        let resolver = resolveGraphDBQueryFromAppSyncEvent(event);
+        if (resolver.language !== RESOLVER_LANGUAGE) {
+            return onError('Unsupported resolver language:' + resolver.language)
+        }
+        log('Resolved ' + resolver.language + ' query successfully');
+        return resolver;
     } catch (error) {
         return onError('Error resolving graphQL query', error);
     }
-    if (resolver.language !== RESOLVER_LANGUAGE) {
-        return onError('Unsupported resolver language:' + resolver.language)
-    }
+}
+
+export const handler = async (event) => {
+    let resolver = resolveGraphQuery(event);
 
     try {
-        const input = {
-            graphIdentifier: `${process.env.NEPTUNE_DB_NAME}`,
+        const command = new ExecuteQueryCommand({
+            graphIdentifier: process.env.NEPTUNE_DB_NAME,
             queryString: resolver.query,
             language: QUERY_LANGUAGE,
             parameters: resolver.parameters
-        };
-        if (LOGGING_ENABLED) console.log('input:' + JSON.stringify(input));
-        const command = new ExecuteQueryCommand(input);
+        });
         const response = await getClient().send(command);
+        log('Received query response');
         let data = await new Response(response.payload).json();
-        if (LOGGING_ENABLED) console.log('data:' + JSON.stringify(data));
+        // query result should have result array of single item or an empty array
+        // {"results": [{ ... }]}
+        if (data.results.length === 0) {
+            log('Query produced no results');
+            return [];
+        }
+        if (data.results.length !== 1) {
+            return onError('Expected 1 query result but received ' + data.results.length);
+        }
+        log('Obtained data from query response');
         return data.results[0][Object.keys(data.results[0])[0]];
     } catch (error) {
-        return onError('Error executing openCypher query: ', error);
+        return onError('Error executing ' + QUERY_LANGUAGE + ' query: ', error);
     }
 };

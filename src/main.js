@@ -288,10 +288,13 @@ async function main() {
     }
 
     // Check if Neptune target is db or graph
-    if ( inputGraphDBSchemaNeptuneEndpoint.includes('neptune-graph') || 
-         createUpdatePipelineEndpoint.includes('neptune-graph') ||
-         inputCDKpipelineEnpoint.includes('neptune-graph'))
-         neptuneType = 'neptune-graph';
+    if (inputGraphDBSchemaNeptuneEndpoint.includes('neptune-graph') ||
+        createUpdatePipelineEndpoint.includes('neptune-graph') ||
+        inputCDKpipelineEnpoint.includes('neptune-graph')) {
+        neptuneType = 'neptune-graph';
+        // neptune analytics requires IAM
+        isNeptuneIAMAuth = true;
+    }
 
     // Get Neptune schema from endpoint
     if (inputGraphDBSchemaNeptuneEndpoint != '' && inputGraphDBSchema == '' && inputGraphDBSchemaFile == '') {
