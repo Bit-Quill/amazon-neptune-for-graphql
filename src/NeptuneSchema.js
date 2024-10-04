@@ -56,6 +56,11 @@ function sanitize(text) {
     return text;
 }
 
+function sanitize(text) {
+    // TODO implement sanitization logic
+    return text;
+}
+
 /**
  * Executes a neptune query
  * @param query the query to execute
