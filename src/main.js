@@ -207,13 +207,13 @@ function processArgs() {
                 inputCDKpipeline = true;            
             break;
             case '-ce':
-            case '--output-aws-pipeline-cdk-neptume-endpoint':
+            case '--output-aws-pipeline-cdk-neptune-endpoint':
                 inputCDKpipelineEnpoint = array[index + 1];
             break;
             case 'cro':
             case '-c2l':
             case '-cd':
-            case '--output-aws-pipeline-cdk-neptume-database-name':
+            case '--output-aws-pipeline-cdk-neptune-database-name':
                 inputCDKpipelineDatabaseName = array[index + 1];
             break;
             case '-cn':

@@ -25,7 +25,7 @@ let SAMPLE = 5000;
 let NEPTUNE_TYPE = 'neptune-db';
 let NAME = '';
 let language = 'openCypher';
-let useSDK = true;
+let useSDK = false;
 let msg = '';
 
 async function getAWSCredentials() {
