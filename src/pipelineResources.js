@@ -48,6 +48,7 @@ import archiver from 'archiver';
 import ora from 'ora';
 import { exit } from "process";
 import { loggerError, loggerLog } from "./logger.js";
+import { parseNeptuneDomain } from "./util.js";
 
 // Input
 let NEPTUNE_DB_NAME = '';
@@ -176,12 +177,14 @@ function storeResource(resource) {
     fs.writeFileSync(RESOURCES_FILE, JSON.stringify(RESOURCES, null, 2));
 }
 
-
-async function getNeptuneClusterinfoBy(name, region) {
+/**
+ * Retrieves information about the neptune db cluster for the given db name and region. Should not be used for neptune analytics graphs.
+ */
+async function getNeptuneClusterDbInfoBy(name, region) {
     NEPTUNE_DB_NAME = name;
     REGION = region;
 
-    await getNeptuneClusterinfo();
+    await setNeptuneDbClusterInfo();
 
     return {
         host: NEPTUNE_HOST, 
@@ -194,38 +197,34 @@ async function getNeptuneClusterinfoBy(name, region) {
         iamPolicyResource: NEPTUNE_IAM_POLICY_RESOURCE };
 }
 
+/**
+ * Retrieves information about the neptune db cluster and sets module-level variable values based on response data. Should not be used for neptune analytics graphs.
+ */
+async function setNeptuneDbClusterInfo() {
+    const neptuneClient = new NeptuneClient({region: REGION});
 
-async function getNeptuneClusterinfo() {
-    if (NEPTUNE_TYPE == 'neptune-db') {
-        const neptuneClient = new NeptuneClient({region: REGION});
+    const params = {
+        DBClusterIdentifier: NEPTUNE_DB_NAME
+    };
 
-        const params = {
-            DBClusterIdentifier: NEPTUNE_DB_NAME
-        };
+    const data = await neptuneClient.send(new DescribeDBClustersCommand(params));
 
-        const data = await neptuneClient.send(new DescribeDBClustersCommand(params));
-        
-        const input = { // DescribeDBSubnetGroupsMessage
-            DBSubnetGroupName: data.DBClusters[0].DBSubnetGroup,        
-        };
-        const command = new DescribeDBSubnetGroupsCommand(input);
-        const response = await neptuneClient.send(command);
-            
-        NEPTUNE_HOST = data.DBClusters[0].Endpoint;
-        NEPTUNE_PORT = data.DBClusters[0].Port.toString();
-        NEPTUNE_DBSubnetGroup = data.DBClusters[0].DBSubnetGroup;
-        NEPTUNE_VpcSecurityGroupId = data.DBClusters[0].VpcSecurityGroups[0].VpcSecurityGroupId;
-        NEPTUNE_CURRENT_IAM = data.DBClusters[0].IAMDatabaseAuthenticationEnabled;
-        NEPTUNE_CURRENT_VERSION = data.DBClusters[0].EngineVersion;
-        NEPTUNE_IAM_POLICY_RESOURCE = `${data.DBClusters[0].DBClusterArn.substring(0, data.DBClusters[0].DBClusterArn.lastIndexOf(':cluster')).replace('rds', 'neptune-db')}:${data.DBClusters[0].DbClusterResourceId}/*`;    
-        response.DBSubnetGroups[0].Subnets.forEach(element => { 
-            NEPTUNE_DBSubnetIds.push(element.SubnetIdentifier);
-        });
-    } else {
-        msg = 'AWS SDK for Neptune Analytics is not available, yet.';
-        loggerLog(msg);
-        throw new Error(msg);            
-    }    
+    const input = { // DescribeDBSubnetGroupsMessage
+        DBSubnetGroupName: data.DBClusters[0].DBSubnetGroup,
+    };
+    const command = new DescribeDBSubnetGroupsCommand(input);
+    const response = await neptuneClient.send(command);
+
+    NEPTUNE_HOST = data.DBClusters[0].Endpoint;
+    NEPTUNE_PORT = data.DBClusters[0].Port.toString();
+    NEPTUNE_DBSubnetGroup = data.DBClusters[0].DBSubnetGroup;
+    NEPTUNE_VpcSecurityGroupId = data.DBClusters[0].VpcSecurityGroups[0].VpcSecurityGroupId;
+    NEPTUNE_CURRENT_IAM = data.DBClusters[0].IAMDatabaseAuthenticationEnabled;
+    NEPTUNE_CURRENT_VERSION = data.DBClusters[0].EngineVersion;
+    NEPTUNE_IAM_POLICY_RESOURCE = `${data.DBClusters[0].DBClusterArn.substring(0, data.DBClusters[0].DBClusterArn.lastIndexOf(':cluster')).replace('rds', 'neptune-db')}:${data.DBClusters[0].DbClusterResourceId}/*`;
+    response.DBSubnetGroups[0].Subnets.forEach(element => {
+        NEPTUNE_DBSubnetIds.push(element.SubnetIdentifier);
+    });
 }
 
 
@@ -384,10 +383,9 @@ async function createLambdaFunction() {
                 "NEPTUNE_PORT": NEPTUNE_PORT,
                 "NEPTUNE_IAM_AUTH_ENABLED": NEPTUNE_IAM_AUTH.toString(),
                 "LOGGING_ENABLED": "false",
-                "NEPTUNE_TYPE": NEPTUNE_TYPE,
                 "NEPTUNE_DB_NAME": NEPTUNE_DB_NAME,
                 "NEPTUNE_REGION": REGION,
-                "NEPTUNE_DOMAIN": parseDomain(),
+                "NEPTUNE_DOMAIN": parseNeptuneDomain(NEPTUNE_HOST),
             },
         },
     };
@@ -944,7 +942,7 @@ async function createUpdateAWSpipeline (    pipelineName,
                 try {
                     if (!quiet) console.log('Get Neptune Cluster Info');
                     if (!quiet) spinner = ora('Getting ...').start();
-                    await getNeptuneClusterinfo();
+                    await setNeptuneDbClusterInfo();
                     if (!quiet) spinner.succeed('Got Neptune Cluster Info');
                     if (isNeptuneIAMAuth) {
                         if (!NEPTUNE_CURRENT_IAM) {
@@ -1070,19 +1068,5 @@ async function createUpdateAWSpipeline (    pipelineName,
     }
 }
 
-function parseDomain() {
-    let parts = NEPTUNE_HOST.split('.');
-    const MIN_HOST_PARTS = 5;
-    if (parts.length < MIN_HOST_PARTS) {
-        throw Error('Cannot parse domain from ' + NEPTUNE_HOST + ' because it has ' + parts.length + ' parts but expected at least ' + MIN_HOST_PARTS);
-    }
-    // last 3 parts of the host make up the domain
-    // ie. neptune.amazonaws.com or neptune-graph.amazonaws.com
-    let domainParts = parts.splice(parts.length - 3, 3);
-    let domain = domainParts.join('.');
-    loggerLog('Parsed domain: ' + domain)
-    return domain;
-}
-
-export { createUpdateAWSpipeline, getNeptuneClusterinfoBy, removeAWSpipelineResources }
+export { createUpdateAWSpipeline, getNeptuneClusterDbInfoBy, removeAWSpipelineResources }
 
