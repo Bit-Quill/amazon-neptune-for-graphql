@@ -15,8 +15,8 @@ import { aws4Interceptor } from "aws4-axios";
 import { fromNodeProviderChain  } from "@aws-sdk/credential-providers";
 import { NeptunedataClient, ExecuteOpenCypherQueryCommand } from "@aws-sdk/client-neptunedata";
 import { loggerLog } from "./logger.js";
-import { parseNeptuneDomain } from "./util.js";
-import {ExecuteQueryCommand, NeptuneGraphClient} from "@aws-sdk/client-neptune-graph";
+import { parseNeptuneDomain, parseNeptuneGraphName } from "./util.js";
+import { ExecuteQueryCommand, NeptuneGraphClient } from "@aws-sdk/client-neptune-graph";
 
 let HOST = '';
 let PORT = 8182;
@@ -356,7 +356,7 @@ function setGetNeptuneSchemaParameters(host, port, region, verbose = false, nept
     REGION = region;
     VERBOSE = verbose;
     NEPTUNE_TYPE = neptuneType;
-    NAME = host.split('.')[0];
+    NAME = parseNeptuneGraphName(host);
 }
 
 

@@ -15,6 +15,19 @@ const NUM_DOMAIN_PARTS = 3;
 const DELIMITER = '.';
 
 /**
+ * Splits a neptune host into its parts, throwing an Error if there are unexpected number of parts.
+ *
+ * @param neptuneHost
+ */
+function splitHost(neptuneHost) {
+    let parts = neptuneHost.split(DELIMITER);
+    if (parts.length < MIN_HOST_PARTS) {
+        throw Error('Cannot parse neptune host ' + neptuneHost + ' because it has ' + parts.length + ' parts but expected at least ' + MIN_HOST_PARTS);
+    }
+    return parts;
+}
+
+/**
  * Parses the domain from the given neptune db or neptune analytics host.
  *
  * Example: g-abcdef.us-west-2.neptune-graph.amazonaws.com ==> neptune-graph.amazonaws.com
@@ -23,14 +36,25 @@ const DELIMITER = '.';
  * @param neptuneHost
  */
 function parseNeptuneDomain(neptuneHost) {
-    let parts = neptuneHost.split(DELIMITER);
-    if (parts.length < MIN_HOST_PARTS) {
-        throw Error('Cannot parse domain from ' + neptuneHost + ' because it has ' + parts.length + ' parts but expected at least ' + MIN_HOST_PARTS);
-    }
+    let parts = splitHost(neptuneHost);
     // last 3 parts of the host make up the domain
     // ie. neptune.amazonaws.com or neptune-graph.amazonaws.com
     let domainParts = parts.splice(parts.length - NUM_DOMAIN_PARTS, NUM_DOMAIN_PARTS);
     return domainParts.join(DELIMITER);
 }
 
-export {parseNeptuneDomain};
+/**
+ * Parses the neptune graph name from the given neptune db or neptune analytics host.
+ *
+ * Example: g-abcdef.us-west-2.neptune-graph.amazonaws.com ==> g-abcdef
+ * Example: db-neptune-abc-def.cluster-xyz.us-west-2.neptune.amazonaws.com ==> db-neptune-abc-def
+ *
+ * @param neptuneHost
+ */
+function parseNeptuneGraphName(neptuneHost) {
+    let parts = splitHost(neptuneHost);
+    // graph name is the first part
+    return parts[0];
+}
+
+export {parseNeptuneDomain, parseNeptuneGraphName};
