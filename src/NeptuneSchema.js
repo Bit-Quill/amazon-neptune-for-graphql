@@ -16,7 +16,7 @@ import { fromNodeProviderChain  } from "@aws-sdk/credential-providers";
 import { NeptunedataClient, ExecuteOpenCypherQueryCommand } from "@aws-sdk/client-neptunedata";
 import { loggerError, loggerInfo } from "./logger.js";
 import { parseNeptuneDomain, parseNeptuneGraphName } from "./util.js";
-import { ExecuteQueryCommand, NeptuneGraphClient } from "@aws-sdk/client-neptune-graph";
+import { ExecuteQueryCommand, GetGraphSummaryCommand, NeptuneGraphClient } from "@aws-sdk/client-neptune-graph";
 
 let HOST = '';
 let PORT = 8182;
@@ -139,9 +139,7 @@ async function queryNeptuneGraphSDK(query, params = '{}') {
         const response = await client.send(command);
         return await new Response(response.payload).json();
     } catch (error) {
-        msg = `Graph SDK query request failed: ${error.message}`;
-        console.error(msg);
-        loggerLog(msg + ': ' + JSON.stringify(error));
+        loggerError('Graph SDK query request failed:' + JSON.stringify(error));
         process.exit(1);
     }
 }
@@ -340,16 +338,54 @@ function setGetNeptuneSchemaParameters(host, port, region, neptuneType) {
     NAME = parseNeptuneGraphName(host);
 }
 
+/**
+ * Get a summary of a neptune analytics graph
+ */
+async function getNeptuneGraphSummary() {
+    loggerInfo('Retrieving neptune graph summary')
+    const client = new NeptuneGraphClient({
+        port: PORT,
+        host: parseNeptuneDomain(HOST),
+        region: REGION,
+        protocol: 'https',
+    });
+    let command = new GetGraphSummaryCommand({
+        graphIdentifier: NAME,
+        mode: 'detailed'
+    });
+    const response = await client.send(command);
+    loggerInfo('Retrieved neptune graph summary')
+    return response.graphSummary;
+}
 
-async function getSchemaViaSummaryAPI() {
+/**
+ * Get a summary of a neptune db graph
+ */
+async function getNeptuneDbSummary() {
+    loggerInfo('Retrieving neptune db summary')
+    let response = await axios.get(`https://${HOST}:${PORT}/propertygraph/statistics/summary`, {
+        params: {
+            mode: 'detailed'
+        }
+    });
+    loggerInfo('Retrieved neptune db summary')
+    return response.data.payload.graphSummary;
+}
+
+async function getSchemaViaSummary() {
     try {
-        const response = await axios.get(`https://${HOST}:${PORT}/propertygraph/statistics/summary?mode=detailed`);
-        response.data.payload.graphSummary.nodeLabels.forEach(label => {
+        let graphSummary;
+        if (NEPTUNE_TYPE === 'neptune-db') {
+            graphSummary = await getNeptuneDbSummary();
+        } else {
+            graphSummary = await getNeptuneGraphSummary();
+        }
+        graphSummary.nodeLabels.forEach(label => {
             schema.nodeStructures.push({label:label, properties:[]});
             loggerInfo('Found node: ' + yellow(label));
         });
 
-        response.data.payload.graphSummary.edgeLabels.forEach(label => {
+        graphSummary.edgeLabels.forEach(label => {
             schema.edgeStructures.push({label:label, properties:[], directions:[]});
             loggerInfo('Found edge: ' + yellow(label));
         });
@@ -372,7 +408,7 @@ async function getNeptuneSchema() {
         loggerError(msg + ': ' + JSON.stringify(error));
     }
 
-    if (await getSchemaViaSummaryAPI()) {
+    if (await getSchemaViaSummary()) {
         loggerInfo("Got nodes and edges via Neptune Summary API.");
     } else {
         loggerInfo("Getting nodes via queries.");
