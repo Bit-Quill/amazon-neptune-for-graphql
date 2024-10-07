@@ -24,9 +24,11 @@ let REGION = ''
 let SAMPLE = 5000;
 let NEPTUNE_TYPE = 'neptune-db';
 let NAME = '';
-let language = 'openCypher';
 let useSDK = false;
 let msg = '';
+const NEPTUNE_GRAPH_PROTOCOL = 'https';
+const HTTP_LANGUAGE = 'openCypher';
+const NEPTUNE_GRAPH_LANGUAGE = 'OPEN_CYPHER';
 
 async function getAWSCredentials() {
     const credentialProvider = fromNodeProviderChain();
@@ -73,12 +75,13 @@ async function queryNeptune(query, params = '{}') {
                 query: query,
                 parameters: params
             };
-            const response = await axios.post(`https://${HOST}:${PORT}/${language}`, data);
+            const response = await axios.post(`https://${HOST}:${PORT}/${HTTP_LANGUAGE}`, data);
         return response.data;
         } catch (error) {
             loggerError(`Http query request failed` + ': ' + JSON.stringify(error));
-            loggerInfo("Trying with the AWS SDK");
+            loggerInfo('Trying with the AWS SDK');
             const response = await queryNeptuneSdk(query, params);
+            loggerInfo('Querying via AWS SDK was successful, will use SDK for future queries')
             useSDK = true;
             return response;
         }
@@ -128,12 +131,12 @@ async function queryNeptuneGraphSDK(query, params = '{}') {
             port: PORT,
             host: parseNeptuneDomain(HOST),
             region: REGION,
-            protocol: 'https',
+            protocol: NEPTUNE_GRAPH_PROTOCOL,
         });
         const command = new ExecuteQueryCommand({
             graphIdentifier: NAME,
             queryString: query,
-            language: 'OPEN_CYPHER',
+            language: NEPTUNE_GRAPH_LANGUAGE,
             parameters: JSON.parse(params)
         });
         const response = await client.send(command);
@@ -347,7 +350,7 @@ async function getNeptuneGraphSummary() {
         port: PORT,
         host: parseNeptuneDomain(HOST),
         region: REGION,
-        protocol: 'https',
+        protocol: NEPTUNE_GRAPH_PROTOCOL,
     });
     let command = new GetGraphSummaryCommand({
         graphIdentifier: NAME,
@@ -372,7 +375,10 @@ async function getNeptuneDbSummary() {
     return response.data.payload.graphSummary;
 }
 
-async function getSchemaViaSummary() {
+/**
+ * Load the neptune schema by querying the summary API
+ */
+async function loadSchemaViaSummary() {
     try {
         let graphSummary;
         if (NEPTUNE_TYPE === 'neptune-db') {
@@ -408,7 +414,7 @@ async function getNeptuneSchema() {
         loggerError(msg + ': ' + JSON.stringify(error));
     }
 
-    if (await getSchemaViaSummary()) {
+    if (await loadSchemaViaSummary()) {
         loggerInfo("Got nodes and edges via Neptune Summary API.");
     } else {
         loggerInfo("Getting nodes via queries.");

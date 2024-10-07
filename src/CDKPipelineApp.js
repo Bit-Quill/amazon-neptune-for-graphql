@@ -74,7 +74,22 @@ async function createDeploymentFile(folderPath, zipFilePath) {
 }
 
 
-async function createAWSpipelineCDK (pipelineName, neptuneDBName, neptuneDBregion, appSyncSchema, schemaModel, lambdaFilesPath, outputFile, __dirname, quiet, isNeptuneIAMAuth, neptuneHost, neptunePort, outputFolderPath, neptuneType ) {
+async function createAWSpipelineCDK({
+                                        pipelineName,
+                                        neptuneDBName,
+                                        neptuneDBregion,
+                                        appSyncSchema,
+                                        schemaModel,
+                                        lambdaFilesPath,
+                                        outputFile,
+                                        __dirname,
+                                        quiet,
+                                        isNeptuneIAMAuth,
+                                        neptuneHost,
+                                        neptunePort,
+                                        outputFolderPath,
+                                        neptuneType
+                                    }) {
 
     NAME = pipelineName;    
     REGION = neptuneDBregion;

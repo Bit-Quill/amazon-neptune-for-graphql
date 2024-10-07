@@ -2,7 +2,7 @@
     "name": "Unit Test (Air Routes) CDK Pipeline",
     "description":"Create CDK pipeline",
     "argv":["--quiet", 
-            "--input-schema-file", "./test/TestCases/Case06/input/airports.source.schema.graphql",                        
+            "--input-schema-file", "./test/TestCases/airports.source.schema.graphql",
             "--output-folder-path", "./test/TestCases/Case06/output",
             "--output-aws-pipeline-cdk",
             "--output-aws-pipeline-cdk-name", "AirportCDKTestJest",

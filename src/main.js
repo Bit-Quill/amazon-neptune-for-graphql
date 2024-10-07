@@ -291,6 +291,7 @@ async function main() {
         inputCDKpipelineEnpoint.includes('neptune-graph')) {
         neptuneType = 'neptune-graph';
         // neptune analytics requires IAM
+        loggerInfo("Detected neptune-graph from input endpoint - setting IAM auth to true as it is required for neptune analytics")
         isNeptuneIAMAuth = true;
     }
 
@@ -623,20 +624,22 @@ async function main() {
                     inputCDKpipelineFile = `${outputFolderPath}/${inputCDKpipelineName}-cdk.js`;
                 }
 
-                await createAWSpipelineCDK( inputCDKpipelineName, 
-                                            inputCDKpipelineDatabaseName,
-                                            inputCDKpipelineRegion,
-                                            outputSchema,
-                                            schemaModel,
-                                            __dirname + outputLambdaPackagePath,
-                                            inputCDKpipelineFile,
-                                            __dirname,
-                                            quiet,
-                                            isNeptuneIAMAuth,
-                                            neptuneHost,
-                                            neptunePort,
-                                            outputFolderPath,
-                                            neptuneType );
+                await createAWSpipelineCDK({
+                    pipelineName: inputCDKpipelineName,
+                    neptuneDBName: inputCDKpipelineDatabaseName,
+                    neptuneDBregion: inputCDKpipelineRegion,
+                    appSyncSchema: outputSchema,
+                    schemaModel: schemaModel,
+                    lambdaFilesPath: __dirname + outputLambdaPackagePath,
+                    outputFile: inputCDKpipelineFile,
+                    __dirname: __dirname,
+                    quiet: quiet,
+                    isNeptuneIAMAuth: isNeptuneIAMAuth,
+                    neptuneHost: neptuneHost,
+                    neptunePort: neptunePort,
+                    outputFolderPath: outputFolderPath,
+                    neptuneType: neptuneType
+                });
             } catch (err) {
                 loggerError('Error creating CDK File: ' + JSON.stringify(err));
             }

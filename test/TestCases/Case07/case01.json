@@ -2,7 +2,7 @@
     "name": "Unit Test (Air Routes) Pipeline",
     "description":"Create SDK pipeline",
     "argv":["--quiet",
-            "--input-schema-file", "./test/TestCases/Case07/input/airports.source.schema.graphql",
+            "--input-schema-file", "./test/TestCases/airports.source.schema.graphql",
             "--output-folder-path", "./test/TestCases/Case07/output",
             "--create-update-aws-pipeline",
             "--create-update-aws-pipeline-name", "AirportsJestSDKTest",

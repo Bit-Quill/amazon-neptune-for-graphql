@@ -43,6 +43,9 @@ function log(message) {
     }
 }
 
+/**
+ * Converts graphQL query to open cypher.
+ */
 function resolveGraphQuery(event) {
     try {
         let resolver = resolveGraphDBQueryFromAppSyncEvent(event);
@@ -56,6 +59,9 @@ function resolveGraphQuery(event) {
     }
 }
 
+/**
+ * Converts incoming graphQL query into open cypher format and sends the query to neptune analytics query API.
+ */
 export const handler = async (event) => {
     let resolver = resolveGraphQuery(event);
 
