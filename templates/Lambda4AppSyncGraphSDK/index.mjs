@@ -8,21 +8,21 @@ const RESOLVER_LANGUAGE = 'opencypher';
 let client;
 
 function getClient() {
-    if (client) {
-        return client;
+    if (!client) {
+        try {
+            log('Instantiating NeptuneGraphClient')
+            client = new NeptuneGraphClient({
+                port: process.env.NEPTUNE_PORT,
+                host: process.env.NEPTUNE_DOMAIN,
+                region: process.env.NEPTUNE_REGION,
+                protocol: PROTOCOL,
+            });
+        } catch (error) {
+            return onError('Error instantiating NeptuneGraphClient: ', error);
+        }
     }
-    try {
-        return new NeptuneGraphClient({
-            port: process.env.NEPTUNE_PORT,
-            host: process.env.NEPTUNE_DOMAIN,
-            region: process.env.NEPTUNE_REGION,
-            protocol: PROTOCOL,
-        });
-    } catch (error) {
-        return onError('Error instantiating NeptuneGraphClient: ', error);
-    }
+    return client;
 }
-
 
 function onError(context, error) {
     let msg;

@@ -26,6 +26,8 @@ let NEPTUNE_TYPE = 'neptune-db';
 let NAME = '';
 let useSDK = false;
 let msg = '';
+let neptuneGraphClient;
+let neptunedataClient;
 const NEPTUNE_GRAPH_PROTOCOL = 'https';
 const HTTP_LANGUAGE = 'openCypher';
 const NEPTUNE_GRAPH_LANGUAGE = 'OPEN_CYPHER';
@@ -104,10 +106,7 @@ async function queryNeptuneSdk(query, params = '{}') {
  */
 async function queryNeptuneDbSDK(query, params = '{}') {
     try {
-        const config = {            
-            endpoint: `https://${HOST}:${PORT}`
-        };
-        const client = new NeptunedataClient(config);
+        const client = getNeptunedataClient();
         const input = {
             openCypherQuery: query,
             parameters: params
@@ -127,12 +126,7 @@ async function queryNeptuneDbSDK(query, params = '{}') {
  */
 async function queryNeptuneGraphSDK(query, params = '{}') {
     try {
-        const client = new NeptuneGraphClient({
-            port: PORT,
-            host: parseNeptuneDomain(HOST),
-            region: REGION,
-            protocol: NEPTUNE_GRAPH_PROTOCOL,
-        });
+        const client = getNeptuneGraphClient();
         const command = new ExecuteQueryCommand({
             graphIdentifier: NAME,
             queryString: query,
@@ -341,18 +335,36 @@ function setGetNeptuneSchemaParameters(host, port, region, neptuneType) {
     NAME = parseNeptuneGraphName(host);
 }
 
+function getNeptunedataClient() {
+    if (!neptunedataClient) {
+        loggerInfo('Instantiating NeptunedataClient')
+        neptunedataClient = new NeptunedataClient({
+            endpoint: `https://${HOST}:${PORT}`
+        });
+    }
+    return neptunedataClient;
+}
+
+function getNeptuneGraphClient() {
+    if (!neptuneGraphClient) {
+        loggerInfo('Instantiating NeptuneGraphClient')
+        neptuneGraphClient = new NeptuneGraphClient({
+            port: PORT,
+            host: parseNeptuneDomain(HOST),
+            region: REGION,
+            protocol: NEPTUNE_GRAPH_PROTOCOL,
+        });
+    }
+    return neptuneGraphClient;
+}
+
 /**
  * Get a summary of a neptune analytics graph
  */
 async function getNeptuneGraphSummary() {
     loggerInfo('Retrieving neptune graph summary')
-    const client = new NeptuneGraphClient({
-        port: PORT,
-        host: parseNeptuneDomain(HOST),
-        region: REGION,
-        protocol: NEPTUNE_GRAPH_PROTOCOL,
-    });
-    let command = new GetGraphSummaryCommand({
+    const client = getNeptuneGraphClient();
+    const command = new GetGraphSummaryCommand({
         graphIdentifier: NAME,
         mode: 'detailed'
     });
