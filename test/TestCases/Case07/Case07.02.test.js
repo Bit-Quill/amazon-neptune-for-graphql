@@ -1,13 +1,6 @@
-import { readJSONFile } from '../../testLib';
-import { main } from "../../../src/main";
+import {checkOutputFilesContent, checkOutputFilesSize, checkOutputZipLambdaUsesSdk, readJSONFile} from '../../testLib';
 
-const casetest = readJSONFile('./test/TestCases/Case07/case02.json');
-
-async function executeUtility() {    
-    process.argv = casetest.argv;
-    await main();
-}
-
-test('Execute utility: ' + casetest.argv.join(' '), async () => {
-    expect(await executeUtility()).not.toBe(null);    
-}, 600000);
+const casetest = readJSONFile('./test/TestCases/Case07/case01.json');
+checkOutputFilesSize('./test/TestCases/Case07/output', casetest.testOutputFilesSize, './test/TestCases/Case07/outputReference');
+checkOutputFilesContent('./test/TestCases/Case07/output', casetest.testOutputFilesContent, './test/TestCases/Case07/outputReference');
+checkOutputZipLambdaUsesSdk('./test/TestCases/Case07/output', './test/TestCases/Case07/output/AirportsJestSDKTest.zip');
