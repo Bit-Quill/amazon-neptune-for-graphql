@@ -32,9 +32,10 @@ function onError(context, error) {
         msg = context;
     }
     console.error(msg);
-    return {
-        "error": [{"message": msg}]
-    };
+    if (error) {
+        throw error;
+    }
+    throw new Error(msg);
 }
 
 function log(message) {
