@@ -21,13 +21,10 @@ import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema
 import { createUpdateAWSpipeline, removeAWSpipelineResources } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
 import { createLambdaDeploymentPackage } from './lambdaZip.js'
-import { loggerInit, loggerError, loggerInfo } from './logger.js';
+import { loggerInit, loggerError, loggerInfo, yellow } from './logger.js';
 
 import ora from 'ora';
 let spinner = null;
-function yellow(text) {
-    return '\x1b[33m' + text + '\x1b[0m';
-}
 
 // find global installation dir
 import path from 'path';
@@ -41,6 +38,8 @@ const version = JSON.parse(readFileSync(__dirname + '/../package.json')).version
 
 // Input
 let quiet = false;
+let logLevel = 'info';
+let logColors = true;
 let inputGraphQLSchema = '';
 let inputGraphQLSchemaFile = '';
 let inputGraphQLSchemaChanges = '';
@@ -107,6 +106,13 @@ function processArgs() {
             case '-q':
             case '--quiet':
                 quiet = true;
+                logLevel = 'warn';
+            break;
+            case '--verbose':
+                logLevel = 'debug';
+            break;
+            case '--no-colors':
+                logColors = false;
             break;
             case '-is':
             case '--input-schema':
@@ -269,7 +275,7 @@ async function main() {
     mkdirSync(outputFolderPath, { recursive: true });
 
     // Init the logger    
-    loggerInit(outputFolderPath, quiet);
+    loggerInit(logLevel, logColors);
     loggerInfo('Starting neptune-for-graphql version: ' + version);
     loggerInfo('Input arguments: ' + process.argv);
 

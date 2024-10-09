@@ -16,7 +16,7 @@ import { readFile, writeFile } from 'fs/promises';
 import fs from 'fs';
 import archiver from 'archiver';
 import ora from 'ora';
-import { loggerError, loggerInfo } from "./logger.js";
+import { loggerError, loggerInfo, yellow } from "./logger.js";
 
 let NAME = '';
 let REGION = '';
@@ -35,10 +35,6 @@ let APPSYNC_ATTACH_MUTATION = [];
 let SCHEMA_MODEL = null;
 let thisOutputFolderPath = './output';
 let msg = '';
-
-function yellow(text) {
-    return '\x1b[33m' + text + '\x1b[0m';
-}
 
 async function getSchemaFields(typeName) {
     /*  To be updated as:

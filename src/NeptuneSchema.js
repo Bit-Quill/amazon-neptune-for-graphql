@@ -14,7 +14,7 @@ import axios from "axios";
 import { aws4Interceptor } from "aws4-axios";
 import { fromNodeProviderChain  } from "@aws-sdk/credential-providers";
 import { NeptunedataClient, ExecuteOpenCypherQueryCommand } from "@aws-sdk/client-neptunedata";
-import { loggerError, loggerInfo } from "./logger.js";
+import { loggerError, loggerInfo, yellow } from "./logger.js";
 import { parseNeptuneDomain, parseNeptuneGraphName } from "./util.js";
 import { ExecuteQueryCommand, GetGraphSummaryCommand, NeptuneGraphClient } from "@aws-sdk/client-neptune-graph";
 
@@ -52,10 +52,6 @@ const schema = {
     nodeStructures:[],
     edgeStructures:[]
 };
-
-function yellow(text) {
-    return '\x1b[33m' + text + '\x1b[0m';
-}
 
 function sanitize(text) {
     // TODO implement sanitization logic

@@ -47,7 +47,7 @@ import fs from 'fs';
 import archiver from 'archiver';
 import ora from 'ora';
 import { exit } from "process";
-import { loggerError, loggerInfo } from "./logger.js";
+import { loggerError, loggerInfo, yellow } from "./logger.js";
 import { parseNeptuneDomain } from "./util.js";
 
 // Input
@@ -82,11 +82,6 @@ let msg = '';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms)); // alternative: import { setTimeout } from timers/promises
 let spinner = null;
-
-function yellow(text) {
-    return '\x1b[33m' + text + '\x1b[0m';
-}
-
 
 async function checkPipeline() {
     // Checking if Role, Lambda and AppSync API is already created.
