@@ -233,7 +233,7 @@ function addUpdateEdgeProperty(edgeName, name, value) {
 async function getEdgeProperties(edge) {
     let query = `MATCH ()-[n:${sanitize(edge.label)}]->() RETURN properties(n) as properties LIMIT $sample`;
     let parameters = `{"sample": ${SAMPLE}}`;
-    loggerInfo('Getting properties for edge');
+    loggerDebug(`Getting properties for edge: ${query}`);
     try {
         let response = await queryNeptune(query, parameters);            
         let result = response.results;
@@ -250,6 +250,7 @@ async function getEdgeProperties(edge) {
 
 
 async function getEdgesProperties() {
+    loggerInfo('Retrieving edge properties');
     await Promise.all(schema.edgeStructures.map(async (edge) => {
         await getEdgeProperties(edge);
       }));
@@ -259,6 +260,7 @@ async function getEdgesProperties() {
 async function getNodeProperties(node) {
     let query = `MATCH (n:${sanitize(node.label)}) RETURN properties(n) as properties LIMIT $sample`;
     let parameters = `{"sample": ${SAMPLE}}`;
+    loggerDebug(`Getting properties for node: ${query}`);
     try {
         let response = await queryNeptune(query, parameters);
         let result = response.results;
@@ -274,7 +276,8 @@ async function getNodeProperties(node) {
 }
 
 
-async function getNodesProperties() {    
+async function getNodesProperties() {
+    loggerInfo('Retrieving node properties');
     await Promise.all(schema.nodeStructures.map(async (node) => {
         await getNodeProperties(node);
       }));

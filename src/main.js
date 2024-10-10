@@ -272,7 +272,7 @@ async function main() {
     // Init the logger    
     loggerInit(outputFolderPath, quiet, logLevel);
     loggerInfo('Starting neptune-for-graphql version: ' + version);
-    loggerInfo('Input arguments: ' + process.argv);
+    loggerDebug('Input arguments: ' + process.argv);
 
     // Get graphDB schema from file
     if (inputGraphDBSchemaFile != '' && inputGraphQLSchema == '' && inputGraphQLSchemaFile == '') {
