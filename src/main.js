@@ -39,7 +39,6 @@ const version = JSON.parse(readFileSync(__dirname + '/../package.json')).version
 // Input
 let quiet = false;
 let logLevel = 'info';
-let logColors = true;
 let inputGraphQLSchema = '';
 let inputGraphQLSchemaFile = '';
 let inputGraphQLSchemaChanges = '';
@@ -110,9 +109,6 @@ function processArgs() {
             break;
             case '--verbose':
                 logLevel = 'debug';
-            break;
-            case '--no-colors':
-                logColors = false;
             break;
             case '-is':
             case '--input-schema':
@@ -275,7 +271,7 @@ async function main() {
     mkdirSync(outputFolderPath, { recursive: true });
 
     // Init the logger    
-    loggerInit(logLevel, logColors);
+    loggerInit(outputFolderPath, quiet);
     loggerInfo('Starting neptune-for-graphql version: ' + version);
     loggerInfo('Input arguments: ' + process.argv);
 
@@ -319,19 +315,19 @@ async function main() {
         else
             neptuneRegion = neptuneRegionParts[1];
 
-        loggerInfo('Getting Neptune schema from endpoint: ' + yellow(neptuneHost + ':' + neptunePort));
+        loggerInfo('Getting Neptune schema from endpoint: ' + yellow(neptuneHost + ':' + neptunePort), {toConsole: true});
 
         setGetNeptuneSchemaParameters(neptuneHost, neptunePort, neptuneRegion, neptuneType);
         let startTime = performance.now();
         inputGraphDBSchema = await getNeptuneSchema();
         let endTime = performance.now();
         let executionTime = endTime - startTime;
-        loggerInfo(msg = 'Execution time: ' + (executionTime/1000).toFixed(2) + ' seconds');
+        loggerInfo(msg = 'Execution time: ' + (executionTime/1000).toFixed(2) + ' seconds', {toConsole: true});
     }
 
     // Option 2: inference GraphQL schema from graphDB schema
     if (inputGraphDBSchema != '' && inputGraphQLSchema == '' && inputGraphQLSchemaFile == '') {
-        loggerInfo('Inferencing GraphQL schema from graphDB schema');
+        loggerInfo('Inferencing GraphQL schema from graphDB schema', {toConsole: true});
         inputGraphQLSchema = graphDBInferenceSchema(inputGraphDBSchema, outputSchemaMutations);
     }
 
@@ -466,7 +462,7 @@ async function main() {
 
         try {
             writeFileSync(outputSchemaFile, outputSchema);
-            loggerInfo('Wrote GraphQL schema to file: ' + yellow(outputSchemaFile));
+            loggerInfo('Wrote GraphQL schema to file: ' + yellow(outputSchemaFile), {toConsole: true});
         } catch (err) {
             msg = 'Error writing GraphQL schema to file: ' + yellow(outputSchemaFile);
             loggerError(msg + ": " + JSON.stringify(err));
@@ -485,7 +481,7 @@ async function main() {
 
         try {
             writeFileSync(outputSourceSchemaFile, outputSourceSchema);
-            loggerInfo('Wrote GraphQL schema to file: ' + yellow(outputSourceSchemaFile));
+            loggerInfo('Wrote GraphQL schema to file: ' + yellow(outputSourceSchemaFile), {toConsole: true});
         } catch (err) {
             msg = 'Error writing GraphQL schema to file: ' + yellow(outputSourceSchemaFile);
             loggerError(msg + ": " + JSON.stringify(err));
@@ -503,7 +499,7 @@ async function main() {
 
         try {
             writeFileSync(outputNeptuneSchemaFile, inputGraphDBSchema);
-            loggerInfo('Wrote Neptune schema to file: ' + yellow(outputNeptuneSchemaFile));
+            loggerInfo('Wrote Neptune schema to file: ' + yellow(outputNeptuneSchemaFile), {toConsole: true});
         } catch (err) {
             msg = 'Error writing Neptune schema to file: ' + yellow(outputNeptuneSchemaFile);
             loggerError(msg + ": " + JSON.stringify(err));
@@ -517,7 +513,7 @@ async function main() {
 
         try {
             writeFileSync(outputLambdaResolverFile, outputLambdaResolver);
-            loggerInfo('Wrote Lambda resolver to file: ' + yellow(outputLambdaResolverFile));
+            loggerInfo('Wrote Lambda resolver to file: ' + yellow(outputLambdaResolverFile), {toConsole: true});
         } catch (err) {
             msg = 'Error writing Lambda resolver to file: ' + yellow(outputLambdaResolverFile);
             loggerError(msg + ": " + JSON.stringify(err));
@@ -535,7 +531,7 @@ async function main() {
 
         try {
             writeFileSync(outputJSResolverFile, outputJSResolver);
-            loggerInfo('Wrote Javascript resolver to file: ' + yellow(outputJSResolverFile));
+            loggerInfo('Wrote Javascript resolver to file: ' + yellow(outputJSResolverFile), {toConsole: true});
         } catch (err) {
             msg = 'Error writing Javascript resolver to file: ' + yellow(outputJSResolverFile);
             loggerError(msg + ": " + JSON.stringify(err));
@@ -570,7 +566,7 @@ async function main() {
                 if (!quiet) {
                     spinner.stop();
                 }
-                loggerInfo('Wrote Lambda ZIP file: ' + yellow(outputLambdaResolverZipFile));
+                loggerInfo('Wrote Lambda ZIP file: ' + yellow(outputLambdaResolverZipFile), {toConsole: true});
             } catch (err) {
                 msg = 'Error creating Lambda ZIP file: ' + yellow(outputLambdaResolverZipFile);
                 loggerError(msg + ": " + JSON.stringify(err));
@@ -656,10 +652,10 @@ async function main() {
 
     // Remove AWS Pipeline
     if ( removePipelineName != '') {
-        loggerInfo('Removing pipeline AWS resources, name: ' + yellow(removePipelineName));
+        loggerInfo('Removing pipeline AWS resources, name: ' + yellow(removePipelineName), {toConsole: true});
         let resourcesToRemove = null;
         let resourcesFile = `${outputFolderPath}/${removePipelineName}-resources.json`;
-        loggerInfo('Using file: ' + yellow(resourcesFile));
+        loggerInfo('Using file: ' + yellow(resourcesFile), {toConsole: true});
         try {
             resourcesToRemove = readFileSync(resourcesFile, 'utf8');
         } catch (err) {

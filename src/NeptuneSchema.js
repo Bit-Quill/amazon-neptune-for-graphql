@@ -214,7 +214,7 @@ function addUpdateNodeProperty(nodeName, name, value) {
     if (property === undefined) {
         let propertyType = CastGraphQLType(value);        
         node.properties.push({name: name, type: propertyType});
-        loggerInfo(`Added property to node: ${yellow(nodeName)} property: ${yellow(name)} type: ${yellow(propertyType)}`);
+        loggerInfo(`Added property to node: ${yellow(nodeName)} property: ${yellow(name)} type: ${yellow(propertyType)}`, {toConsole: true});
     }    
 }
 
@@ -396,12 +396,12 @@ async function loadSchemaViaSummary() {
         }
         graphSummary.nodeLabels.forEach(label => {
             schema.nodeStructures.push({label:label, properties:[]});
-            loggerInfo('Found node: ' + yellow(label));
+            loggerInfo('Found node: ' + yellow(label), {toConsole: true});
         });
 
         graphSummary.edgeLabels.forEach(label => {
             schema.edgeStructures.push({label:label, properties:[], directions:[]});
-            loggerInfo('Found edge: ' + yellow(label));
+            loggerInfo('Found edge: ' + yellow(label), {toConsole: true});
         });
 
         return true;
@@ -423,7 +423,7 @@ async function getNeptuneSchema() {
     }
 
     if (await loadSchemaViaSummary()) {
-        loggerInfo("Got nodes and edges via Neptune Summary API.");
+        loggerInfo("Got nodes and edges via Neptune Summary API.", {toConsole: true});
     } else {
         loggerInfo("Getting nodes via queries.");
         await getNodesNames();

@@ -1,52 +1,76 @@
 import { pino } from "pino";
 
-let logger;
-let colorize = true;
+let fileLogger;
+let consoleLogger;
 
 /**
  * Initialize the standard out and file loggers.
- * @param logLevel the log level to output - "fatal" | "error" | "warn" | "info" | "debug" | "trace"
- * @param colors true if the output should have colors
+ * @param directory the directory in which to create the log file
+ * @param quiet true if the standard output should be minimalized to errors only
  */
-function loggerInit(logLevel = 'info', colors = true) {
-    logger = pino(pino.transport({
+function loggerInit(directory, quiet = false) {
+    let destination = directory + '/log_' + (new Date()).toISOString() + '.txt';
+    fileLogger = pino(pino.transport({
         targets: [
             {
                 target: 'pino-pretty',
                 options: {
-                    // standard out
-                    destination: 1,
-                    colorize: colors,
-                    colorizeObjects: colors,
+                    destination: destination,
+                    colorize: false,
                     translateTime: 'yyyy-mm-dd HH:MM:ss',
                     ignore: 'pid,hostname'
                 },
             }
         ]
     }));
-    logger.level = logLevel;
-    colorize = colors;
+    fileLogger.level = 'debug';
+
+    consoleLogger = pino(pino.transport({
+        targets: [
+            {
+                target: 'pino-pretty',
+                options: {
+                    // standard out
+                    destination: 1,
+                    colorize: true,
+                    colorizeObjects: true,
+                    //translateTime: 'yyyy-mm-dd HH:MM:ss',
+                    ignore: 'pid,hostname,time,level'
+                },
+            }
+        ]
+    }));
+    consoleLogger.level = quiet ? 'warn' : 'debug';
 }
 
-function loggerInfo(text, options = {}) {
+function loggerInfo(text, options = {toConsole: false}) {
     let detail = options.detail;
     if (detail) {
-        logger.info(text + ': ' + yellow(detail));
+        if (options.toConsole) {
+            consoleLogger.info(text + ': ' + yellow(detail));
+        }
+        fileLogger.info(removeYellow(text) + ': ' + removeYellow(detail));
     } else {
-        logger.info(text);
+        if (options.toConsole) {
+            consoleLogger.info(text);
+        }
+        // remove any yellow which may have been added by the caller
+        fileLogger.info(removeYellow(text));
     }
 }
 
 function loggerError(text) {
-    logger.error(text);
+    consoleLogger.error(text);
+    fileLogger.error(removeYellow(text));
 }
 
 function yellow(text) {
-    if (colorize) {
-        return '\x1b[33m' + text + '\x1b[0m';
-    } else {
-        return text;
-    }
+    return '\x1b[33m' + text + '\x1b[0m';
+}
+
+function removeYellow(text) {
+    let withoutYellow = text.replaceAll(/\x1b\[33m/g, '');
+    return withoutYellow.replaceAll(/\x1b\[0m/g, '');
 }
 
 export { loggerInit, loggerInfo, loggerError, yellow };
