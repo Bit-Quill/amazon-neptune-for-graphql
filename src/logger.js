@@ -18,7 +18,8 @@ function loggerInit(logLevel = 'info', colors = true) {
                     destination: 1,
                     colorize: colors,
                     colorizeObjects: colors,
-                    translateTime: "SYS:standard",
+                    translateTime: 'yyyy-mm-dd HH:MM:ss',
+                    ignore: 'pid,hostname'
                 },
             }
         ]
