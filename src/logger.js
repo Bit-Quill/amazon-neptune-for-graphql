@@ -7,8 +7,9 @@ let consoleLogger;
  * Initialize the standard out and file loggers.
  * @param directory the directory in which to create the log file
  * @param quiet true if the standard output should be minimalized to errors only
+ * @param logLevel the file log level
  */
-function loggerInit(directory, quiet = false) {
+function loggerInit(directory, quiet = false, logLevel = 'info') {
     let destination = directory + '/log_' + (new Date()).toISOString() + '.txt';
     fileLogger = pino(pino.transport({
         targets: [
@@ -23,7 +24,7 @@ function loggerInit(directory, quiet = false) {
             }
         ]
     }));
-    fileLogger.level = 'debug';
+    fileLogger.level = logLevel;
 
     consoleLogger = pino(pino.transport({
         targets: [
@@ -47,6 +48,7 @@ function loggerInfo(text, options = {toConsole: false}) {
     let detail = options.detail;
     if (detail) {
         if (options.toConsole) {
+            consoleLogger.info
             consoleLogger.info(text + ': ' + yellow(detail));
         }
         fileLogger.info(removeYellow(text) + ': ' + removeYellow(detail));
@@ -56,6 +58,22 @@ function loggerInfo(text, options = {toConsole: false}) {
         }
         // remove any yellow which may have been added by the caller
         fileLogger.info(removeYellow(text));
+    }
+}
+
+function loggerDebug(text, options = {toConsole: false}) {
+    let detail = options.detail;
+    if (detail) {
+        if (options.toConsole) {
+            consoleLogger.debug(text + ': ' + yellow(detail));
+        }
+        fileLogger.info(removeYellow(text) + ': ' + removeYellow(detail));
+    } else {
+        if (options.toConsole) {
+            consoleLogger.debug(text);
+        }
+        // remove any yellow which may have been added by the caller
+        fileLogger.debug(removeYellow(text));
     }
 }
 
@@ -73,4 +91,4 @@ function removeYellow(text) {
     return withoutYellow.replaceAll(/\x1b\[0m/g, '');
 }
 
-export { loggerInit, loggerInfo, loggerError, yellow };
+export { loggerInit, loggerInfo, loggerError, loggerDebug, yellow };
