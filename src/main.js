@@ -106,7 +106,8 @@ function processArgs() {
             case '--quiet':
                 quiet = true;
             break;
-            case '--verbose':
+            case '-lv':
+            case '--log-verbose':
                 logLevel = 'debug';
             break;
             case '-is':
@@ -564,7 +565,7 @@ async function main() {
                 if (!quiet) spinner = ora('Creating Lambda ZIP ...').start();
                 await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile);                                
                 if (!quiet) {
-                    spinner.stop();
+                    spinner.succeed('Created Lambda ZIP');
                 }
                 loggerInfo('Wrote Lambda ZIP file: ' + yellow(outputLambdaResolverZipFile), {toConsole: true});
             } catch (err) {

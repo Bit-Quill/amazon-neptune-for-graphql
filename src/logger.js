@@ -1,7 +1,6 @@
 import { pino } from "pino";
 
 let fileLogger;
-let consoleLogger;
 
 /**
  * Initialize the standard out and file loggers.
@@ -25,60 +24,39 @@ function loggerInit(directory, quiet = false, logLevel = 'info') {
         ]
     }));
     fileLogger.level = logLevel;
+    if (quiet) {
+        console.log = function(){};
+        console.info = function(){};
+        console.debug = function(){};
+    }
+}
 
-    consoleLogger = pino(pino.transport({
-        targets: [
-            {
-                target: 'pino-pretty',
-                options: {
-                    // standard out
-                    destination: 1,
-                    colorize: true,
-                    colorizeObjects: true,
-                    //translateTime: 'yyyy-mm-dd HH:MM:ss',
-                    ignore: 'pid,hostname,time,level'
-                },
-            }
-        ]
-    }));
-    consoleLogger.level = quiet ? 'warn' : 'debug';
+function log(level, text, options = {toConsole: false}) {
+    let detail = options.detail;
+    if (detail) {
+        if (options.toConsole) {
+            console.log(text + ': ' + yellow(detail));
+        }
+        fileLogger[level](removeYellow(text) + ': ' + removeYellow(detail));
+    } else {
+        if (options.toConsole) {
+            console.log(text);
+        }
+        // remove any yellow which may have been added by the caller
+        fileLogger[level](removeYellow(text));
+    }
 }
 
 function loggerInfo(text, options = {toConsole: false}) {
-    let detail = options.detail;
-    if (detail) {
-        if (options.toConsole) {
-            consoleLogger.info
-            consoleLogger.info(text + ': ' + yellow(detail));
-        }
-        fileLogger.info(removeYellow(text) + ': ' + removeYellow(detail));
-    } else {
-        if (options.toConsole) {
-            consoleLogger.info(text);
-        }
-        // remove any yellow which may have been added by the caller
-        fileLogger.info(removeYellow(text));
-    }
+    log('info', text, options);
 }
 
 function loggerDebug(text, options = {toConsole: false}) {
-    let detail = options.detail;
-    if (detail) {
-        if (options.toConsole) {
-            consoleLogger.debug(text + ': ' + yellow(detail));
-        }
-        fileLogger.info(removeYellow(text) + ': ' + removeYellow(detail));
-    } else {
-        if (options.toConsole) {
-            consoleLogger.debug(text);
-        }
-        // remove any yellow which may have been added by the caller
-        fileLogger.debug(removeYellow(text));
-    }
+    log('debug', text, options);
 }
 
 function loggerError(text) {
-    consoleLogger.error(text);
+    console.error(text);
     fileLogger.error(removeYellow(text));
 }
 
