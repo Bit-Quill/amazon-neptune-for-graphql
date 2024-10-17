@@ -59,7 +59,7 @@ To create the Lambda you have two options:
      (NOTE: the Neptune CloudFormation to create the Lambda is outdated, the nodejs12.x is no longer supported by Lambda)
 2. go to Lambda console
     1. Create a new function, author from scratch
-    2. Name the function ( you will point AppSync to this fucntion)
+    2. Name the function ( you will point AppSync to this function)
     3. Runtime: Node.js 18.x
     4. Open Advance settings, enable VPC, and select your Neptune DB VPC, Subnets and Security Group.
     5. Create the function

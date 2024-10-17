@@ -25,7 +25,7 @@ The utility created a new file in the *output* folder called *TodoExample.source
 
 - In the type *Todo* it added *@relationship* for a new type *CommentEdge*. This is instructing the resolver to connect *Todo* to *Comment* using a graph database edge called *CommentEdge*.
 - A new input called *TodoInput* was added to help the queries and the mutations.
-- For each type (*Todo*, *Comment*) the utility added two queries. One to retrive a single type using an id or any of the type fields listed in the input, and the second to retrive multiple values, filtered using the input of that type.
+- For each type (*Todo*, *Comment*) the utility added two queries. One to retrieve a single type using an id or any of the type fields listed in the input, and the second to retrieve multiple values, filtered using the input of that type.
 - For each type three mutations: create, update and delete. Selecting the type to delete using an id or the input for that type. These mutation affect the data stored in The Neptune database.
 - For connections two mutations: connect and delete. They take as input the ids of the from and to. The ids are of used by Neptune, and the connection are edges in the graph database as mention earlier.
 
@@ -101,13 +101,13 @@ The picture shows the creation of a node type *Todo*, using *createNodeTodo* mut
 
 ![Create](https://github.com/aws/amazon-neptune-for-graphql/blob/main/doc/images/todoCreate.jpg)
 
-Here quering all the Todos with *getNodeTodos* query.
+Here querying all the Todos with *getNodeTodos* query.
 
 ![Query](https://github.com/aws/amazon-neptune-for-graphql/blob/main/doc/images/todoGetTodos.jpg)
 
 After having created one *Comment* using *createNodeComment*, we used the Ids connect them using the mutation *connectNodeTodoToNodeCommentEdgeCommentEdge*
 
-Here a nested query to retreive Todos and their attached comments.
+Here a nested query to retrieve Todos and their attached comments.
 
 ![Query](https://github.com/aws/amazon-neptune-for-graphql/blob/main/doc/images/todoNestedQuery.JPG)
 

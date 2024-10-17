@@ -5,7 +5,7 @@ Then you can run this Neptune GraphQL Utility command to create an AppSync Graph
 
 `neptune-for-graphql --input-graphdb-schema-neptune-endpoint `<*your-neptune-database-endpoint:port*>` --create-update-aws-pipeline --create-update-aws-pipeline-name AriRoutesExample`
 
-The command will log during the execution the graph database schema it finds, the files it creates and the AWS resouces it creates or modifies. If you ever want to run the command logging only errors use the `--quiet` CLI option.
+The command will log during the execution the graph database schema it finds, the files it creates and the AWS resources it creates or modifies. If you ever want to run the command logging only errors use the `--quiet` CLI option.
 
 ![Running](https://github.com/aws/amazon-neptune-for-graphql/blob/main/doc/images/utilityRunning.gif)
 
@@ -92,9 +92,9 @@ Below the GraphQL schema with directives, inferenced by the utility.
 - Because the node labelled *continent* is connected to the *airport* using the edge *contains* and the cardinality is one to many, you can see the directive *@relationship* in the GraphQL type *Continent* and new field names *airportContainssOut* returning an array of *Airport*. The type Airport has an opposite field called *continentContainsIn* as single *Continent*. This tuple declaration will enable you to query the *Continent* from the *Airport* and the list of *Airport*/s from a *Continent*.
 - The edge *route* that connect an *airport* to another *airport* has a property called *dist*. You can find it in the type *Route*, and is added to the type *Airport* as well. We will see later how to query it.
 - For each type the utility also added input, which are used as helpers for queries and mutations.
-- For each node label the utility added two queries. One to retrive a single node/type using an id or any of the type fields listed in the input, and the second to retrive multiple values, again filtered using the input of that node/type.
+- For each node label the utility added two queries. One to retrieve a single node/type using an id or any of the type fields listed in the input, and the second to retrieve multiple values, again filtered using the input of that node/type.
 - For each node three mutations: create, update and delete. Selecting the node to delete using an id or the input for that node/type.
-- For edges two mutations: connect and delete. They take as input the ids of the from and to node, and in case the edge type has properties the corrispondent input.
+- For edges two mutations: connect and delete. They take as input the ids of the from and to node, and in case the edge type has properties, the corresponding input.
 
 Note: the queries and mutations you see below are recognized by the resolver based on the name pattern. If you need to customize it, first look at the documentation section: *Customize the GraphQL schema with directives*.
 
@@ -248,7 +248,7 @@ schema {
 Here below snapshot of the AppSync Queries console used to test our new GraphQL API named *AirRoutesExampleAPI*.
 In the middle window, the Explorer shows you the queries and mutations. You can then pick a query, the input parameters and the return fields. 
 
-In this case it formed a GrahQL query that is looking for one *Airport*, with *code* equal *SEA*, and return the *city*, the outboud flights *airportsOut*, and for each destination the *city* and the *route* distance, *dist*. As mentioned earlier in the graph database the nodes *airport* are connected with the edge type *route*, and *dist* is a property of the edge.
+In this case it formed a GraphQL query that is looking for one *Airport*, with *code* equal *SEA*, and return the *city*, the outbound flights *airportsOut*, and for each destination the *city* and the *route* distance, *dist*. As mentioned earlier in the graph database the nodes *airport* are connected with the edge type *route*, and *dist* is a property of the edge.
 
 You can then follow the AppSync documentation on how to call the GraphQL API from your application, enable caching and other AppSync API features.
 

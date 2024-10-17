@@ -93,7 +93,7 @@ new AppSyncNeptuneStack(app, 'your-CdkStack-name', {
 
 ### Run the CDK application
 
-To create CloudFormantion template:
+To create CloudFormation template:
 
 `cdk synth`
 
