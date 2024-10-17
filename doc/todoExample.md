@@ -47,10 +47,6 @@ type Comment {
   content: String
 }
 
-input Options {
-  limit: Int
-}
-
 input TodoInput {
   _id: ID @id
   name: String
