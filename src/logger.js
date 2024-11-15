@@ -12,7 +12,8 @@ let logFileDestination;
  * @param logLevel the file log level
  */
 function loggerInit(directory, quiet = false, logLevel = 'info') {
-    logFileDestination = path.join(directory, 'log_' + new Date().toISOString().replaceAll(/[.:]/g,'-') + '.txt');
+    // replaces characters that windows does not allow in filenames
+    logFileDestination = path.join(directory, 'log_' + new Date().toISOString().replaceAll(/[.:]/g, '-') + '.txt');
     const streams = [
         {
             level: logLevel,
@@ -26,6 +27,7 @@ function loggerInit(directory, quiet = false, logLevel = 'info') {
         },
     ]
 
+    // using pino.multistream seems to resolve some issues with file logging in windows environments that occurred when pino.transport was used instead
     fileLogger = pino({
         level: logLevel
     }, pino.multistream(streams));
