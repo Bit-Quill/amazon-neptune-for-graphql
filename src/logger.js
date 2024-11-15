@@ -1,4 +1,5 @@
 import { pino } from "pino";
+import pretty from "pino-pretty";
 import path from "path";
 
 let fileLogger;
@@ -11,22 +12,23 @@ let logFileDestination;
  * @param logLevel the file log level
  */
 function loggerInit(directory, quiet = false, logLevel = 'info') {
-    logFileDestination = path.join(directory, 'log_' + (new Date()).toISOString() + '.txt');
-    fileLogger = pino(pino.transport({
-        targets: [
-            {
-                target: 'pino-pretty',
-                options: {
-                    destination: logFileDestination,
-                    mkdir: true,
-                    colorize: false,
-                    translateTime: 'yyyy-mm-dd HH:MM:ss',
-                    ignore: 'pid,hostname'
-                },
-            }
-        ]
-    }));
-    fileLogger.level = logLevel;
+    logFileDestination = path.join(directory, 'log_' + (new Date()).toISOString().replaceAll(':','').replaceAll('.','') + '.txt');
+    const streams = [
+        {
+            stream: pretty({
+                destination: logFileDestination,
+                mkdir: true,
+                colorize: false,
+                translateTime: 'yyyy-mm-dd HH:MM:ss',
+                ignore: 'pid,hostname'
+            })
+        },
+    ]
+
+    // fix level
+    fileLogger = pino({
+        level: logLevel
+    }, pino.multistream(streams))
     if (quiet) {
         console.log = function(){};
         console.info = function(){};
