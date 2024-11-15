@@ -12,9 +12,10 @@ let logFileDestination;
  * @param logLevel the file log level
  */
 function loggerInit(directory, quiet = false, logLevel = 'info') {
-    logFileDestination = path.join(directory, 'log_' + (new Date()).toISOString().replaceAll(':','').replaceAll('.','') + '.txt');
+    logFileDestination = path.join(directory, 'log_' + new Date().toISOString().replaceAll(/[.:]/g,'-') + '.txt');
     const streams = [
         {
+            level: logLevel,
             stream: pretty({
                 destination: logFileDestination,
                 mkdir: true,
@@ -25,10 +26,9 @@ function loggerInit(directory, quiet = false, logLevel = 'info') {
         },
     ]
 
-    // fix level
     fileLogger = pino({
         level: logLevel
-    }, pino.multistream(streams))
+    }, pino.multistream(streams));
     if (quiet) {
         console.log = function(){};
         console.info = function(){};
