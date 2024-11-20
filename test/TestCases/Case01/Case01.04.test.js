@@ -1,6 +1,6 @@
 
 import { jest } from '@jest/globals';
-import { readJSONFile, testResolverQueriesResults } from '../../testLib';
+import { readJSONFile, testResolverQueriesResults } from '../../testLib.mjs';
 
 const casetest = readJSONFile('./test/TestCases/Case01/case.json');
 
