@@ -1017,7 +1017,6 @@ function resolveGremlinQuery(obj, querySchemaInfo) {
     return gremlinQuery;
 }
 
-
 // Function takes the graphql query and output the graphDB query
 function resolveGraphDBQuery(query) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
@@ -1048,4 +1047,4 @@ function resolveGraphDBQuery(query) {
 }
 
 
-export default { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
+export { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
