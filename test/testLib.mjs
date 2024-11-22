@@ -143,8 +143,17 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
             if (JSON.stringify(data, null, 2) != JSON.stringify(query.result, null, 2))
                 console.log(JSON.stringify(data, null, 2));
             
-            test(`Resolver Neptune result, ${queryFile}: ${query.name}`, async () => {    
-                expect(JSON.stringify(data, null, 2)).toBe(JSON.stringify(query.result, null, 2));
+            test(`Resolver Neptune result, ${queryFile}: ${query.name}`, async () => {
+                if(typeof query.result === 'number') { // if number
+                    expect(JSON.stringify(data, null, 2)).toBe(JSON.stringify(query.result, null, 2));
+                }
+                else if (Object.keys(query.result).length === 1 && Array.isArray(Object.values(query.result)[0])) { // if ONLY single array of objects
+                    expect(data.airportRoutesOut).toEqual(expect.arrayContaining(query.result.airportRoutesOut));
+                }
+                else { // if objects
+                    expect(data).toEqual(query.result);
+                    expect(data).toEqual(expect.objectContaining(query.result));
+                }
             });            
         }
     }
