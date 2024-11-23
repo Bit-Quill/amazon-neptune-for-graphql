@@ -14,7 +14,7 @@ import gql from 'graphql-tag'; // GraphQL library to parse the GraphQL query
 
 const useCallSubquery = false;
 
-// 2024-11-21T20:36:02.331Z
+// 2024-11-23T01:16:20.126Z
 
 const schemaDataModelJSON = `{
   "kind": "Document",
@@ -2000,7 +2000,7 @@ const schemaDataModelJSON = `{
                   },
                   "value": {
                     "kind": "StringValue",
-                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport)-[:route]->(:airport{code:'$toCode'})",
+                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport{country:'$country'})-[:route]->(:airport{code:'$toCode'})",
                     "block": false
                   }
                 }
@@ -3465,7 +3465,7 @@ const schemaDataModelJSON = `{
   ],
   "loc": {
     "start": 0,
-    "end": 4710
+    "end": 4730
   }
 }`;
     

@@ -150,7 +150,7 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
                 else if (Object.keys(query.result).length === 1 && Array.isArray(Object.values(query.result)[0])) { // if ONLY single array of objects
                     expect(data.airportRoutesOut).toEqual(expect.arrayContaining(query.result.airportRoutesOut));
                 }
-                else { // if objects
+                else { // if objects or array + objects
                     expect(data).toEqual(query.result);
                     expect(data).toEqual(expect.objectContaining(query.result));
                 }
