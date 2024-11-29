@@ -148,7 +148,7 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
                     expect(JSON.stringify(data, null, 2)).toBe(JSON.stringify(query.result, null, 2));
                 }
                 else if (Object.keys(query.result).length === 1 && Array.isArray(Object.values(query.result)[0])) { // if ONLY single array of objects
-                    expect(data.airportRoutesOut).toEqual(expect.arrayContaining(query.result.airportRoutesOut));
+                    expect(data[Object.keys(query.result)[0]]).toEqual(expect.arrayContaining(query.result[Object.keys(query.result)[0]]));
                 }
                 else { // if objects or array + objects
                     expect(data).toEqual(query.result);
