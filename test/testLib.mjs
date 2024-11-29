@@ -152,7 +152,6 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
                 }
                 else { // if objects or array + objects
                     expect(data).toEqual(query.result);
-                    expect(data).toEqual(expect.objectContaining(query.result));
                 }
             });            
         }
