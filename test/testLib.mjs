@@ -145,7 +145,7 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
             
             test(`Resolver Neptune result, ${queryFile}: ${query.name}`, async () => {
                 if(typeof query.result === 'number') { // if number
-                    expect(JSON.stringify(data, null, 2)).toBe(JSON.stringify(query.result, null, 2));
+                    expect(data).toBe(query.result);
                 }
                 else if (Object.keys(query.result).length === 1 && Array.isArray(Object.values(query.result)[0])) { // if ONLY single array of objects
                     expect(data[Object.keys(query.result)[0]]).toEqual(expect.arrayContaining(query.result[Object.keys(query.result)[0]]));
