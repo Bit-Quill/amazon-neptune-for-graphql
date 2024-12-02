@@ -8,6 +8,7 @@
   },
   "author": "",
   "license": "ISC",
+  "type": "module",
   "dependencies": {
     "aws4-axios": "3.3.0",
     "axios": "1.7.4",
