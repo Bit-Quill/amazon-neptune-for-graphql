@@ -1047,4 +1047,5 @@ function resolveGraphDBQuery(query) {
 }
 
 
-export default { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
+export default { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent };
+export { resolveGraphDBQuery, refactorGremlinqueryOutput };

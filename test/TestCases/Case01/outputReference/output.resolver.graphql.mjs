@@ -14,7 +14,7 @@ import gql from 'graphql-tag'; // GraphQL library to parse the GraphQL query
 
 const useCallSubquery = false;
 
-// 2024-11-23T01:16:20.126Z
+// 2024-12-04T00:38:40.575Z
 
 const schemaDataModelJSON = `{
   "kind": "Document",
@@ -4498,4 +4498,5 @@ function resolveGraphDBQuery(query) {
 }
 
 
-export { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
+export default { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent };
+export { resolveGraphDBQuery, refactorGremlinqueryOutput };

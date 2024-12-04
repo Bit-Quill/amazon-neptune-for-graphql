@@ -14,7 +14,7 @@ import gql from 'graphql-tag'; // GraphQL library to parse the GraphQL query
 
 const useCallSubquery = false;
 
-// 2024-11-21T20:36:37.948Z
+// 2024-12-04T00:39:19.017Z
 
 const schemaDataModelJSON = `{
   "kind": "Document",
@@ -1962,7 +1962,7 @@ const schemaDataModelJSON = `{
                   },
                   "value": {
                     "kind": "StringValue",
-                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport)-[:route]->(:airport{code:'$toCode'})",
+                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport{country:'$country'})-[:route]->(:airport{code:'$toCode'})",
                     "block": false
                   }
                 }
@@ -3497,7 +3497,7 @@ const schemaDataModelJSON = `{
   ],
   "loc": {
     "start": 0,
-    "end": 4915
+    "end": 4935
   }
 }`;
     
@@ -4530,4 +4530,5 @@ function resolveGraphDBQuery(query) {
 }
 
 
-export { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
+export default { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent };
+export { resolveGraphDBQuery, refactorGremlinqueryOutput };

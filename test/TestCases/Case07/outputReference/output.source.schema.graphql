@@ -106,7 +106,7 @@ input Options {
 
 type Query {
   getAirport(code: String): Airport
-  getAirportConnection(fromCode: String!, toCode: String!): Airport @cypher(statement: "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport)-[:route]->(:airport{code:'$toCode'})")
+  getAirportConnection(fromCode: String!, toCode: String!): Airport @cypher(statement: "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport{country:'$country'})-[:route]->(:airport{code:'$toCode'})")
   getAirportWithGremlin(code: String): Airport @graphQuery(statement: "g.V().has('airport', 'code', '$code').elementMap()")
   getContinentsWithGremlin: [Continent] @graphQuery(statement: "g.V().hasLabel('continent').elementMap().fold()")
   getCountriesCountGremlin: Int @graphQuery(statement: "g.V().hasLabel('country').count()")
