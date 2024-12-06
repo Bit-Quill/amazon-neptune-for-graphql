@@ -1,5 +1,6 @@
 import { NeptunedataClient, ExecuteOpenCypherQueryCommand, ExecuteGremlinQueryCommand } from "@aws-sdk/client-neptunedata";
-import {resolveGraphDBQueryFromAppSyncEvent, refactorGremlinqueryOutput} from './output.resolver.graphql.js';
+import pkg from './output.resolver.graphql.js';
+const {resolveGraphDBQueryFromAppSyncEvent, refactorGremlinqueryOutput} = pkg;
 
 const LOGGING_ENABLED = process.env.LOGGING_ENABLED;
 
