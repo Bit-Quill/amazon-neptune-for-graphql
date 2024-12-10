@@ -10,11 +10,11 @@ express or implied. See the License for the specific language governing
 permissions and limitations under the License.
 */
 
-const gql = require('graphql-tag'); // GraphQL library to parse the GraphQL query
+import gql from 'graphql-tag'; // GraphQL library to parse the GraphQL query
 
 const useCallSubquery = false;
 
-// 2024-11-19T00:07:26.413Z
+// 2024-12-04T00:39:19.017Z
 
 const schemaDataModelJSON = `{
   "kind": "Document",
@@ -1962,7 +1962,7 @@ const schemaDataModelJSON = `{
                   },
                   "value": {
                     "kind": "StringValue",
-                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport)-[:route]->(:airport{code:'$toCode'})",
+                    "value": "MATCH (:airport{code: '$fromCode'})-[:route]->(this:airport{country:'$country'})-[:route]->(:airport{code:'$toCode'})",
                     "block": false
                   }
                 }
@@ -3497,7 +3497,7 @@ const schemaDataModelJSON = `{
   ],
   "loc": {
     "start": 0,
-    "end": 4915
+    "end": 4935
   }
 }`;
     
@@ -4500,7 +4500,6 @@ function resolveGremlinQuery(obj, querySchemaInfo) {
     return gremlinQuery;
 }
 
-
 // Function takes the graphql query and output the graphDB query
 function resolveGraphDBQuery(query) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
@@ -4531,4 +4530,4 @@ function resolveGraphDBQuery(query) {
 }
 
 
-module.exports = { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
+export { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
