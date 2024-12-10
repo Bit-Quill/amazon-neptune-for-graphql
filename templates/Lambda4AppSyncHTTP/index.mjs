@@ -1,8 +1,7 @@
 import axios from "axios";
 import * as rax from 'retry-axios';
 import { aws4Interceptor } from "aws4-axios";
-import pkg from './output.resolver.graphql.js';
-const {resolveGraphDBQueryFromAppSyncEvent, refactorGremlinqueryOutput} = pkg;
+import {resolveGraphDBQueryFromAppSyncEvent, refactorGremlinqueryOutput} from './output.resolver.graphql.js';
 
 const LOGGING_ENABLED = process.env.LOGGING_ENABLED;
 
