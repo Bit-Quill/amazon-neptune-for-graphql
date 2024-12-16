@@ -10,5 +10,5 @@ export default {
         'AIR_ROUTES_DB_HOST': process.env.AIR_ROUTES_DB_HOST,
         // ex. 8182
         'AIR_ROUTES_DB_PORT': process.env.AIR_ROUTES_DB_PORT
-    },
+    }
 };
