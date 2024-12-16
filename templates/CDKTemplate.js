@@ -10,11 +10,11 @@ express or implied. See the License for the specific language governing
 permissions and limitations under the License.
 */
 
-const { Stack, Duration, App } = require('aws-cdk-lib');
-const lambda  = require( 'aws-cdk-lib/aws-lambda');
-const iam  = require( 'aws-cdk-lib/aws-iam');
-const ec2  = require( 'aws-cdk-lib/aws-ec2');
-const { CfnGraphQLApi, CfnApiKey, CfnGraphQLSchema, CfnDataSource, CfnResolver, CfnFunctionConfiguration }  = require( 'aws-cdk-lib/aws-appsync');
+import { Stack, Duration, App } from 'aws-cdk-lib';
+import lambda from 'aws-cdk-lib/aws-lambda';
+import iam from 'aws-cdk-lib/aws-iam';
+import ec2  from 'aws-cdk-lib/aws-ec2';
+import { CfnGraphQLApi, CfnApiKey, CfnGraphQLSchema, CfnDataSource, CfnResolver, CfnFunctionConfiguration } from 'aws-cdk-lib/aws-appsync';
 
 const NAME = '';
 const REGION = '';
@@ -290,4 +290,4 @@ export function response(ctx) {
 }
 
 
-module.exports = { AppSyncNeptuneStack }
+export { AppSyncNeptuneStack };

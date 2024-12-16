@@ -1,5 +1,7 @@
 export default {
-    'transform': {},
+    transform: {
+        '\\.[jt]sx?$': 'babel-jest',
+    },
     'verbose': true,
     'testSequencer': './test/jestTestSequencer.js',
     'globals': {

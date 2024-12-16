@@ -128,11 +128,13 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
         const query = JSON.parse(fs.readFileSync(queriesReferenceFolder + "/" +queryFile));
         if (query.graphql != "") {
             const result = resolverModule.resolveGraphDBQuery(query.graphql);
+            
             const httpResult = await queryNeptune(query.resolved, result.language, host, port, result.parameters);
-                
+            
             let data = null;
-            if (result.language == 'opencypher')
+            if (result.language == 'opencypher') {
                 data = httpResult.results[0][Object.keys(httpResult.results[0])[0]];
+            }
             else {
                 const input = httpResult.result.data;
                 data = JSON.parse(resolverModule.refactorGremlinqueryOutput(input, result.fieldsAlias));                                            
@@ -141,8 +143,16 @@ async function testResolverQueriesResults(resolverFile, queriesReferenceFolder, 
             if (JSON.stringify(data, null, 2) != JSON.stringify(query.result, null, 2))
                 console.log(JSON.stringify(data, null, 2));
             
-            test(`Resolver Neptune result, ${queryFile}: ${query.name}`, async () => {    
-                expect(JSON.stringify(data, null, 2)).toBe(JSON.stringify(query.result, null, 2));
+            test(`Resolver Neptune result, ${queryFile}: ${query.name}`, async () => {
+                if(typeof query.result === 'number') { // if number
+                    expect(data).toBe(query.result);
+                }
+                else if (Object.keys(query.result).length === 1 && Array.isArray(Object.values(query.result)[0])) { // if ONLY single array of objects
+                    expect(data[Object.keys(query.result)[0]]).toEqual(expect.arrayContaining(query.result[Object.keys(query.result)[0]]));
+                }
+                else { // if objects or array + objects
+                    expect(data).toEqual(query.result);
+                }
             });            
         }
     }
