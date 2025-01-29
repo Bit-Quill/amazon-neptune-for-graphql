@@ -22,27 +22,46 @@ const schemaDataModel = JSON.parse(schemaDataModelJSON);
 
 
 function resolveGraphDBQueryFromAppSyncEvent(event) {
-
     const query = appSyncEventToGraphQLQuery(event);
-
-    const graphQuery = resolveGraphDBQuery(query);
-    return graphQuery;
+    return resolveGraphDBQuery(query);
 }
 
+/**
+ * Converts an app sync event into a graphQL query.
+ *
+ * Example of an app sync event:
+ *
+ * {
+ *   field: 'getNodeAirports',
+ *   arguments: { filter: { country: 'US', runways: 7 }, options: { limit: 5 } },
+ *   selectionSetGraphQL: '{\n code\n  city\n}',
+ *   source: null
+ * }
+ *
+ * Which will be converted into:
+ *
+ * {
+ *     getNodeAirports(filter: {country: "US", runways: 7}, options: {limit: 5}) {
+ *     code
+ *     city
+ *   }
+ * }
+ *
+ * @param event
+ * @returns {string}
+ */
 function appSyncEventToGraphQLQuery(event) {
-    let queryArgs = [];
-    Object.keys(event.arguments).forEach(key => {
-        const value = event.arguments[key];
+    const queryArgs = Object.entries(event.arguments).map(([key, value]) => {
         if (typeof value === 'object') {
             let nestedArgs = Object.entries(value)
                 .map(([nestedKey, nestedValue]) => `${nestedKey}: ${addQuotesIfString(nestedValue)}`)
                 .join(', ');
 
-            queryArgs.push(`${key}: {${nestedArgs}}`);
+            return `${key}: {${nestedArgs}}`;
         } else {
-            queryArgs.push(`${key}: ${addQuotesIfString(value)}`);
+            return `${key}: ${addQuotesIfString(value)}`;
         }
-    });
+    })
 
     let argsStr = '';
     if (queryArgs.length > 0) {
