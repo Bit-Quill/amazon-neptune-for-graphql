@@ -67,7 +67,7 @@ export function resolveGraphDBQueryFromAppSyncEvent(event) {
     const graphQuery = resolveGraphDBQuery(obj);
     return graphQuery;
 }
-  
+
   
 export function resolveGraphDBQueryFromApolloQueryEvent(event) {
   // TODO
