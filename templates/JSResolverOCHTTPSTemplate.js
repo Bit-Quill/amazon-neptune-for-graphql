@@ -24,7 +24,7 @@ const schemaDataModel = JSON.parse(schemaDataModelJSON);
 const schema = buildASTSchema(schemaDataModel, { assumeValidSDL: true });
 
 
-function resolveGraphDBQueryFromAppSyncEvent(event) {        
+function resolveGraphDBQueryFromAppSyncEvent(event) {
     const fieldDef = getFieldDef(event.field);
 
     const args = [];
@@ -67,8 +67,8 @@ function resolveGraphDBQueryFromAppSyncEvent(event) {
     const graphQuery = resolveGraphDBQuery(obj);
     return graphQuery;
 }
-  
-  
+
+
 function resolveGraphDBQueryFromApolloQueryEvent(event) {
   // TODO
 }
