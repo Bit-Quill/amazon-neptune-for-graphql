@@ -21,39 +21,45 @@ const schemaDataModelJSON = `INSERT SCHEMA DATA MODEL HERE`;
 const schemaDataModel = JSON.parse(schemaDataModelJSON);
 
 
-function resolveGraphDBQueryFromAppSyncEvent(event) {        
-    let query = '{\n';
-    let args = '';
-  
-    Object.keys(event.arguments).forEach(key => {
-        if (typeof event.arguments[key] === 'object') {
-            args += key + ': {';
-            let obj = event.arguments[key];
-            Object.keys(obj).forEach(key2 => {
-                args += key2 + ': "' + obj[key2] + '", '
-            });
-            args = args.substring(0, args.length - 2);
-            args += '}';
-        }  else {
-            args += key + ': "' + event.arguments[key] + '", '
-            args = args.substring(0, args.length - 2);
-        }
-    });
-  
-    if (args != '') {                   
-        query += event.field + '(' + args + ') ';
-      } else {
-          query += event.field + ' ';
-      }
-        
-    query += event.selectionSetGraphQL;    
-    query += '\n}';
-  
+function resolveGraphDBQueryFromAppSyncEvent(event) {
+
+    const query = appSyncEventToGraphQLQuery(event);
+
     const graphQuery = resolveGraphDBQuery(query);
     return graphQuery;
 }
+
+function appSyncEventToGraphQLQuery(event) {
+    let queryArgs = [];
+    Object.keys(event.arguments).forEach(key => {
+        const value = event.arguments[key];
+        if (typeof value === 'object') {
+            let nestedArgs = Object.entries(value)
+                .map(([nestedKey, nestedValue]) => `${nestedKey}: ${addQuotesIfString(nestedValue)}`)
+                .join(', ');
+
+            queryArgs.push(`${key}: {${nestedArgs}}`);
+        } else {
+            queryArgs.push(`${key}: ${addQuotesIfString(value)}`);
+        }
+    });
+
+    let argsStr = '';
+    if (queryArgs.length > 0) {
+        argsStr = `(${queryArgs.join(' ')})`;
+    }
+
+    return `{\n${event.field}${argsStr}${event.selectionSetGraphQL}\n}`;
+}
+
+function addQuotesIfString(value) {
+    if (typeof value === 'string') {
+        return `"${value}"`;
+    }
+    return value;
+}
   
-  
+
 function resolveGraphDBQueryFromApolloQueryEvent(event) {
   // TODO
 }
@@ -705,6 +711,9 @@ function transformFunctionInputParameters(fields, schemaInfo) {
         fields.forEach(field => {
             if (field.name.value === arg.name) {
                 let value = field.value.value;
+                if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
+                    value = Number(value);
+                }
                 if (arg.name === schemaInfo.graphDBIdArgName) {
                     r.graphIdValue = value
                 } else if (arg.alias != null) {
