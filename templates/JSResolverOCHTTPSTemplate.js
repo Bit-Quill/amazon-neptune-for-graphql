@@ -749,6 +749,9 @@ function transformFunctionInputParameters(fields, schemaInfo) {
         fields.forEach(field => {
             if (field.name.value === arg.name) {
                 let value = field.value.value;
+                if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
+                    value = Number(value);
+                }
                 if (arg.name === schemaInfo.graphDBIdArgName) {
                     r.graphIdValue = value
                 } else if (arg.alias != null) {
