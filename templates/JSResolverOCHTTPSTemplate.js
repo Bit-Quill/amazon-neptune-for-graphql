@@ -23,7 +23,7 @@ const schemaDataModel = JSON.parse(schemaDataModelJSON);
 
 function resolveGraphDBQueryFromAppSyncEvent(event) {
     const query = appSyncEventToGraphQLQuery(event);
-    return resolveGraphDBQuery(query);
+    return resolveGraphDBQuery(query, event.arguments);
 }
 
 /**
@@ -394,24 +394,16 @@ function getSchemaFieldInfo(typeName, fieldName, pathName) {
 }
 
 
-function getOptionsInSchemaInfo(fields, schemaInfo) {
-    fields.forEach( field => {
-        if (field.name.value == 'limit') {            
-            schemaInfo.argOptionsLimit = field.value.value;
-        }
-        /* TODO        
-        if (field.name.value == 'offset') {            
-            schemaInfo.argOptionsOffset = field.value.value;
-        }
-        if (field.name.value == 'orderBy') {            
-            schemaInfo.argOptionsOrderBy = field.value.value;
-        }
-        */        
-    });    
+function setOptionsInSchemaInfo(options, schemaInfo) {
+    // only limit supported for now
+    let specifiedLimit = options['limit'];
+    if (specifiedLimit) {
+        schemaInfo.argOptionsLimit = specifiedLimit;
+    }
 }
 
   
-function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo) {        
+function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo, params) {
     if (querySchemaInfo.graphQuery != null) {
         var gq = querySchemaInfo.graphQuery.replaceAll('this', querySchemaInfo.pathName);
         obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
@@ -422,7 +414,7 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
             
     } else {
 
-        let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
+        let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo, params);
         
         if  (queryArguments.length > 0) {
             matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`{${queryArguments}})${where}`);
@@ -438,23 +430,21 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
 }
 
 
-function getQueryArguments(args, querySchemaInfo) {
+function getQueryArguments(args, querySchemaInfo, params) {
     let where = '';
-    let queryArguments = '';    
+    let queryArguments = '';
     args.forEach(arg => {
-        if (arg.name.value == 'filter') {
-            let inputFields = transformFunctionInputParameters(arg.value.fields, querySchemaInfo);
+        if (arg.name.value === 'filter') {
+            let inputFields = transformFunctionInputParameters(params['filter'], querySchemaInfo);
             queryArguments = queryArguments + inputFields.fields + ",";
 
-            if (inputFields.graphIdValue != null) {                
+            if (inputFields.graphIdValue != null) {
                 let param = querySchemaInfo.pathName + '_' + 'whereId';
-                Object.assign(parameters, { [param]: inputFields.graphIdValue });
+                Object.assign(parameters, {[param]: inputFields.graphIdValue});
                 where = ` WHERE ID(${querySchemaInfo.pathName}) = $${param}`;
             }
-
-        } else if (arg.name.value == 'options') {
-            if (arg.value.kind === 'ObjectValue')
-                getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
+        } else if (arg.name.value === 'options') {
+            setOptionsInSchemaInfo(params['options'], querySchemaInfo);
         } else {
             queryArguments = queryArguments + arg.name.value + ":'" + arg.value.value + "',";
         }
@@ -691,9 +681,9 @@ function finalizeGraphQuery(matchStatements, withStatements, returnString) {
 }
     
   
-function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
+function resolveGraphDBqueryForGraphQLQuery (obj, querySchemaInfo, args) {
                           
-    createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo);
+    createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo, args);
     
     // start processing the given query
     if (querySchemaInfo.returnIsArray) {
@@ -724,15 +714,12 @@ function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
 }
   
   
-function transformFunctionInputParameters(fields, schemaInfo) {
+function transformFunctionInputParameters(params, schemaInfo) {
     let r = { fields:'', graphIdValue: null };
     schemaInfo.args.forEach(arg => {
-        fields.forEach(field => {
-            if (field.name.value === arg.name) {
-                let value = field.value.value;
-                if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
-                    value = Number(value);
-                }
+        Object.entries(params).forEach(([k, v]) => {
+            if (k === arg.name) {
+                let value = v;
                 if (arg.name === schemaInfo.graphDBIdArgName) {
                     r.graphIdValue = value
                 } else if (arg.alias != null) {
@@ -905,19 +892,19 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
             
     return '';
 }
-     
-    
-function resolveOpenCypherQuery(obj, querySchemaInfo) {
+
+
+function resolveOpenCypherQuery(obj, querySchemaInfo, args) {
     let ocQuery = '';
 
-    // clear 
+    // clear
     matchStatements.splice(0,matchStatements.length);
     withStatements.splice(0,withStatements.length);
     returnString.splice(0, returnString.length);
     parameters = {};
 
     if (querySchemaInfo.type === 'Query') {
-        ocQuery = resolveGrapgDBqueryForGraphQLQuery(obj, querySchemaInfo);
+        ocQuery = resolveGraphDBqueryForGraphQLQuery(obj, querySchemaInfo, args);
     }
 
     if (querySchemaInfo.type === 'Mutation') {
@@ -1047,7 +1034,7 @@ function resolveGremlinQuery(obj, querySchemaInfo) {
 
 
 // Function takes the graphql query and output the graphDB query
-function resolveGraphDBQuery(query) {
+export function resolveGraphDBQuery(query, args) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
         
     // create a gql object from the query, gql is GraphQL Query Language
@@ -1062,13 +1049,13 @@ function resolveGraphDBQuery(query) {
             executeQuery.language = 'gremlin'
         }
     }
-            
-    if (executeQuery.language == 'opencypher') {
-        executeQuery.query = resolveOpenCypherQuery(obj, querySchemaInfo);
+
+    if (executeQuery.language === 'opencypher') {
+        executeQuery.query = resolveOpenCypherQuery(obj, querySchemaInfo, args);
         executeQuery.parameters = parameters;
     }
-     
-    if (executeQuery.language == 'gremlin') {
+
+    if (executeQuery.language === 'gremlin') {
         executeQuery = resolveGremlinQuery(obj, querySchemaInfo);
     }
     
