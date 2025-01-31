@@ -1034,7 +1034,7 @@ function resolveGremlinQuery(obj, querySchemaInfo) {
 
 
 // Function takes the graphql query and output the graphDB query
-export function resolveGraphDBQuery(query, args) {
+function resolveGraphDBQuery(query, args) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
         
     // create a gql object from the query, gql is GraphQL Query Language
