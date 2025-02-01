@@ -433,7 +433,7 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
             
     } else {
 
-        let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo, params);
+        let { queryArguments, where } = getOpenCypherQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo, params);
         
         if  (queryArguments.length > 0) {
             matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`{${queryArguments}})${where}`);
@@ -448,18 +448,25 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});
 }
 
-
-function getQueryArguments(args, querySchemaInfo, params) {
+/**
+ * Obtain a comma separated list of open cypher query arguments
+ *
+ * @param selectionSetArgs array of selection set Arguments from the graphQL query AST
+ * @param querySchemaInfo graphQL query schema information
+ * @param params graphQL query parameter object
+ * @returns {{queryArguments: string, where: string}}
+ */
+function getOpenCypherQueryArguments(selectionSetArgs, querySchemaInfo, params = {}) {
     let where = '';
     let queryArguments = '';
-    args.forEach(arg => {
+    selectionSetArgs.forEach(arg => {
         if (arg.name.value === 'filter') {
-            let inputFields = transformFunctionInputParameters(params['filter'], querySchemaInfo);
-            queryArguments = queryArguments + inputFields.fields + ",";
+            const filterFields = transformAndSetFilterParams(params['filter'], querySchemaInfo);
+            queryArguments = queryArguments + filterFields.fields + ",";
 
-            if (inputFields.graphIdValue != null) {
+            if (filterFields.graphIdValue != null) {
                 let param = querySchemaInfo.pathName + '_' + 'whereId';
-                Object.assign(parameters, {[param]: inputFields.graphIdValue});
+                Object.assign(parameters, {[param]: filterFields.graphIdValue});
                 where = ` WHERE ID(${querySchemaInfo.pathName}) = $${param}`;
             }
         } else if (arg.name.value === 'options') {
@@ -595,7 +602,7 @@ function createTypeFieldStatementAndRecurse(e, fieldSchemaInfo, lastNamePath, la
     }
    
 
-    let { queryArguments, where } = getQueryArguments(e.arguments, fieldSchemaInfo);
+    let { queryArguments, where } = getOpenCypherQueryArguments(e.arguments, fieldSchemaInfo);
     if (queryArguments != '')
         queryArguments = '{' + queryArguments + '}';
 
@@ -731,14 +738,14 @@ function resolveGraphDBqueryForGraphQLQuery (obj, querySchemaInfo, args) {
     
     return finalizeGraphQuery(matchStatements, withStatements, returnString);
 }
-  
-  
-function transformFunctionInputParameters(params, schemaInfo) {
+
+
+function transformFunctionInputParameters(fields, schemaInfo) {
     let r = { fields:'', graphIdValue: null };
     schemaInfo.args.forEach(arg => {
-        Object.entries(params).forEach(([k, v]) => {
-            if (k === arg.name) {
-                let value = v;
+        fields.forEach(field => {
+            if (field.name.value === arg.name) {
+                let value = field.value.value;
                 if (arg.name === schemaInfo.graphDBIdArgName) {
                     r.graphIdValue = value
                 } else if (arg.alias != null) {
@@ -755,8 +762,32 @@ function transformFunctionInputParameters(params, schemaInfo) {
     });
 
     r.fields = r.fields.substring(0, r.fields.length - 2);
-    
+
     return r;
+}
+
+function transformAndSetFilterParams(filterParams, schemaInfo) {
+    let fields = [];
+    let id = null;
+    schemaInfo.args.forEach(arg => {
+        if (filterParams.hasOwnProperty(arg.name)) {
+            const filterValue = filterParams[arg.name];
+
+            if (arg.name === schemaInfo.graphDBIdArgName) {
+                // filtering by node id
+                id = filterValue;
+            } else {
+                const param = `${schemaInfo.pathName}_${arg.alias || arg.name}`;
+                fields.push(`${arg.alias || arg.name}: $${param}`);
+                parameters[param] = filterValue;
+            }
+        }
+    });
+
+    return {
+        fields: fields.join(', '),
+        graphIdValue: id
+    };
 }
   
   
