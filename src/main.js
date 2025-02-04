@@ -20,7 +20,7 @@ import { resolverJS } from './resolverJS.js';
 import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema.js';
 import { createUpdateAWSpipeline, removeAWSpipelineResources } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
-import { createLambdaDeploymentPackage } from './lambdaZip.js'
+import { createApolloDeploymentPackage, createLambdaDeploymentPackage } from './zipPackage.js'
 import { loggerDebug, loggerError, loggerInfo, loggerInit, yellow } from './logger.js';
 
 import ora from 'ora';
@@ -55,6 +55,8 @@ let inputGraphDBSchemaNeptuneEndpoint = '';
 let queryLanguage = 'opencypher'; // or TODO 'gremlin' or 'sparql'
 let queryClient = 'sdk';          // or 'http'
 let isNeptuneIAMAuth = false;
+let createUpdateApolloServer = false;
+let createUpdateApolloServerSubgraph = false;
 let createUpdatePipeline = false;
 let createUpdatePipelineName = '';
 let createUpdatePipelineEndpoint = '';
@@ -183,10 +185,26 @@ function processArgs() {
             case '--output-resolver-query-sdk':
                 queryClient = 'sdk';
             break;
+            case 'asvr':
+            case '--create-update-apollo-server':
+                createUpdateApolloServer = true;
+                createLambdaZip = false;
+                createUpdatePipeline = false;
+                inputCDKpipeline = false;
+            break;
+            case 'asub':
+            case '--create-update-apollo-server-subgraph':
+                createUpdateApolloServerSubgraph = true;
+                createLambdaZip = false;
+                createUpdatePipeline = false;
+                inputCDKpipeline = false;
+            break;
             case '-p':
             case '--create-update-aws-pipeline':
                 createUpdatePipeline = true;
-            break;
+                createUpdateApolloServer = false;
+                createUpdateApolloServerSubgraph = false;
+                break;
             case '-pn':
             case '--create-update-aws-pipeline-name':
                 createUpdatePipelineName = array[index + 1];
@@ -209,7 +227,9 @@ function processArgs() {
             break;
             case '-c':
             case '--output-aws-pipeline-cdk':
-                inputCDKpipeline = true;            
+                inputCDKpipeline = true;
+                createUpdateApolloServer = false;
+                createUpdateApolloServerSubgraph = false;
             break;
             case '-ce':
             // support miss-spelled option for backwards compatibility - could be removed for next major release
@@ -294,6 +314,14 @@ function createOutputFolder() {
     mkdirSync(outputFolderPath, {recursive: true});
 }
 
+function validateArgs() {
+    // TODO more argument validation
+    if (queryClient !== 'http' && (createUpdateApolloServerSubgraph || createUpdateApolloServer)) {
+        console.error(`Neptune querying using ${queryClient} is not yet supported for Apollo Server. Please use option --output-resolver-query-https.`);
+        process.exit(1);
+    }
+}
+
 async function main() {
     
     if (process.argv.length <= 2) {
@@ -302,6 +330,8 @@ async function main() {
     }
 
     processArgs();
+    // invalid args should fail early
+    validateArgs();
 
     // Init the logger
     loggerInit(outputFolderPath, quiet, logLevel);
@@ -568,6 +598,21 @@ async function main() {
             break;
         }
 
+        // output Apollo zip
+        if (createUpdateApolloServer || createUpdateApolloServerSubgraph) {
+            const apolloZipPath = path.join(outputFolderPath, 'apollo.server.zip');
+            try {
+                if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
+                await createApolloDeploymentPackage(apolloZipPath, outputLambdaResolverFile, outputSchemaFile, neptuneInfo, {subgraph: createUpdateApolloServerSubgraph});
+                if (!quiet) {
+                    spinner.succeed('Created Apollo server ZIP');
+                }
+                loggerInfo('Created Apollo server ZIP file: ' + yellow(apolloZipPath), {toConsole: true});
+            } catch (err) {
+                loggerError('Error creating Apollo server ZIP file: ' + yellow(apolloZipPath), err);
+            }
+        }
+
         if  ( !(createUpdatePipeline || inputCDKpipeline) && createLambdaZip) {
 
             if (outputLambdaResolverZipFile == '' && outputLambdaResolverZipName == '')  
@@ -578,7 +623,7 @@ async function main() {
 
             try {
                 if (!quiet) spinner = ora('Creating Lambda ZIP ...').start();
-                await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile);                                
+                await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile, outputLambdaResolverFile, {http: queryClient === 'http'});
                 if (!quiet) {
                     spinner.succeed('Created Lambda ZIP');
                 }
@@ -612,6 +657,7 @@ async function main() {
                                                 neptuneHost,
                                                 neptunePort,
                                                 outputFolderPath,
+                                                outputLambdaResolverFile,
                                                 neptuneType );
             } catch (err) {
                 loggerError('Error creating AWS pipeline', err);

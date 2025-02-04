@@ -49,6 +49,7 @@ import ora from 'ora';
 import { exit } from "process";
 import { loggerDebug, loggerError, loggerInfo, yellow } from './logger.js';
 import { parseNeptuneDomainFromHost } from "./util.js";
+import { createLambdaDeploymentPackage } from "./zipPackage.js";
 
 const NEPTUNE_DB = 'neptune-db';
 
@@ -387,15 +388,15 @@ async function createLambdaRole() {
 
 }
 
-
-async function createDeploymentPackage(folderPath) {       
+/**
+ * Creates the lambda deployment ZIP package
+ * @param templateFolderPath the path to the template folder that contains contents to add to the zip
+ * @param resolverFilePath the path to the resolver file that should be added to the zip
+ * @returns {Promise<Buffer<ArrayBufferLike>>}
+ */
+async function createDeploymentPackage(templateFolderPath, resolverFilePath) {
     const zipFilePath = `${thisOutputFolderPath}/${NAME}.zip`;
-    const output = fs.createWriteStream(zipFilePath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.pipe(output);
-    archive.directory(folderPath, false);
-    archive.file(`${thisOutputFolderPath}/output.resolver.graphql.js`, { name: 'output.resolver.graphql.js' })
-    await archive.finalize();
+    await createLambdaDeploymentPackage(templateFolderPath, zipFilePath, resolverFilePath, {http: templateFolderPath.includes('HTTP')})
     await sleep(2000);
     const fileContent = await fs.readFileSync(zipFilePath);
     return fileContent;    
@@ -918,6 +919,7 @@ async function createUpdateAWSpipeline (    pipelineName,
                                             neptuneHost,
                                             neptunePort,
                                             outputFolderPath,
+                                            resolverFilePath,
                                             neptuneType) {
 
     NAME = pipelineName;
@@ -989,7 +991,7 @@ async function createUpdateAWSpipeline (    pipelineName,
             }
 
             startSpinner('Creating ZIP ...', true);
-            ZIP = await createDeploymentPackage(LAMBDA_FILES_PATH)
+            ZIP = await createDeploymentPackage(LAMBDA_FILES_PATH, resolverFilePath);
             succeedSpinner('Created ZIP File: ' + yellow(LAMBDA_FILES_PATH), {logLevel: 'info'});
 
             await createLambdaRole();
@@ -1021,7 +1023,7 @@ async function createUpdateAWSpipeline (    pipelineName,
         }  
 
         startSpinner('Creating ZIP ...', true);
-        ZIP = await createDeploymentPackage(LAMBDA_FILES_PATH)
+        ZIP = await createDeploymentPackage(LAMBDA_FILES_PATH, resolverFilePath);
         succeedSpinner('Created ZIP File: ' + yellow(LAMBDA_FILES_PATH), {logLevel: 'info'});
 
         loggerInfo('Updating Lambda function', {toConsole: true});
