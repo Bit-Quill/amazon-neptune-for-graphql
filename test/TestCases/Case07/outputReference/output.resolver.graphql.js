@@ -10,12 +10,12 @@ express or implied. See the License for the specific language governing
 permissions and limitations under the License.
 */
 
-const { astFromValue, buildASTSchema, typeFromAST } = require('graphql');
-const gql = require('graphql-tag'); // GraphQL library to parse the GraphQL query
+import { astFromValue, buildASTSchema, typeFromAST } from 'graphql';
+import { gql } from 'graphql-tag'; // GraphQL library to parse the GraphQL query
 
 const useCallSubquery = false;
 
-// 2025-01-31T06:47:04.494Z
+// 2025-02-05T01:37:03.182Z
 
 const schemaDataModelJSON = `{
   "kind": "Document",
@@ -3507,7 +3507,7 @@ const schemaDataModel = JSON.parse(schemaDataModelJSON);
 const schema = buildASTSchema(schemaDataModel, { assumeValidSDL: true });
 
 
-function resolveGraphDBQueryFromAppSyncEvent(event) {        
+export function resolveGraphDBQueryFromAppSyncEvent(event) {
     const fieldDef = getFieldDef(event.field);
 
     const args = [];
@@ -3552,7 +3552,7 @@ function resolveGraphDBQueryFromAppSyncEvent(event) {
 }
   
   
-function resolveGraphDBQueryFromApolloQueryEvent(event) {
+export function resolveGraphDBQueryFromApolloQueryEvent(event) {
   // TODO
 }
 
@@ -4457,7 +4457,7 @@ function gremlinElementToJson(o, fieldsAlias) {
 }
 
 
-function refactorGremlinqueryOutput(queryResult, fieldsAlias) {
+export function refactorGremlinqueryOutput(queryResult, fieldsAlias) {
   
     //const r = JSON.parse(queryResult).result.data;
     const r = queryResult;
@@ -4562,7 +4562,7 @@ function parseQueryInput(queryObjOrStr) {
  * @param {(Object|string)} queryObjOrStr the GraphQL document containing an operation to resolve
  * @returns {string}
  */
-function resolveGraphDBQuery(queryObjOrStr) {
+export function resolveGraphDBQuery(queryObjOrStr) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
 
     const obj = parseQueryInput(queryObjOrStr);
@@ -4586,6 +4586,3 @@ function resolveGraphDBQuery(queryObjOrStr) {
     
     return executeQuery;
 }
-
-
-module.exports = { resolveGraphDBQueryFromAppSyncEvent, resolveGraphDBQueryFromApolloQueryEvent, resolveGraphDBQuery, refactorGremlinqueryOutput };
