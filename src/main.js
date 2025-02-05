@@ -20,7 +20,7 @@ import { resolverJS } from './resolverJS.js';
 import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema.js';
 import { createUpdateAWSpipeline, removeAWSpipelineResources } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
-import { createLambdaDeploymentPackage } from './lambdaZip.js'
+import { createApolloDeploymentPackage, createLambdaDeploymentPackage } from './package.js'
 import { loggerDebug, loggerError, loggerInfo, loggerInit, yellow } from './logger.js';
 
 import ora from 'ora';
@@ -55,6 +55,7 @@ let inputGraphDBSchemaNeptuneEndpoint = '';
 let queryLanguage = 'opencypher'; // or TODO 'gremlin' or 'sparql'
 let queryClient = 'sdk';          // or 'http'
 let isNeptuneIAMAuth = false;
+let createUpdateApolloServer = false;
 let createUpdatePipeline = false;
 let createUpdatePipelineName = '';
 let createUpdatePipelineEndpoint = '';
@@ -182,6 +183,13 @@ function processArgs() {
             case '-ors':
             case '--output-resolver-query-sdk':
                 queryClient = 'sdk';
+            break;
+            case 'as':
+            case '--create-update-apollo-server':
+                createUpdateApolloServer = true;
+                createLambdaZip = false;
+                createUpdatePipeline = false;
+                inputCDKpipeline = false;
             break;
             case '-p':
             case '--create-update-aws-pipeline':
@@ -566,6 +574,21 @@ async function main() {
                     outputLambdaPackagePath = '/../templates/Lambda4AppSyncGraphSDK';
                 }
             break;
+        }
+
+        if (createUpdateApolloServer) {
+            try {
+                if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
+                const apolloZipPath = outputFolderPath + '/apollo.server.zip';
+                const apolloTemplatePath = '/../templates/ApolloHTTP'
+                await createApolloDeploymentPackage(__dirname + apolloTemplatePath, apolloZipPath, neptuneInfo);
+                if (!quiet) {
+                    spinner.succeed('Created Apollo server ZIP');
+                }
+                loggerInfo('Created Apollo server ZIP file: ' + yellow(apolloZipPath), {toConsole: true});
+            } catch (err) {
+                loggerError('Error creating Apollo server ZIP file: ' + yellow(apolloZipPath), err);
+            }
         }
 
         if  ( !(createUpdatePipeline || inputCDKpipeline) && createLambdaZip) {
