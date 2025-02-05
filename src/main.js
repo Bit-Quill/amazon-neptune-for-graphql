@@ -20,7 +20,7 @@ import { resolverJS } from './resolverJS.js';
 import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema.js';
 import { createUpdateAWSpipeline, removeAWSpipelineResources } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
-import {createApolloDeploymentPackage, createLambdaDeploymentPackage} from './lambdaZip.js'
+import { createApolloDeploymentPackage, createLambdaDeploymentPackage } from './package.js'
 import { loggerDebug, loggerError, loggerInfo, loggerInit, yellow } from './logger.js';
 
 import ora from 'ora';
@@ -86,7 +86,6 @@ let outputNeptuneSchemaFile = '';
 let outputLambdaResolverZipName = '';
 let outputLambdaResolverZipFile = '';
 let outputLambdaPackagePath = '';
-const outputApolloPackagePath = '/../templates/ApolloHTTP';
 
 // Schema model
 let schemaModel = {};
@@ -185,9 +184,12 @@ function processArgs() {
             case '--output-resolver-query-sdk':
                 queryClient = 'sdk';
             break;
+            case 'as':
             case '--create-update-apollo-server':
                 createUpdateApolloServer = true;
                 createLambdaZip = false;
+                createUpdatePipeline = false;
+                inputCDKpipeline = false;
             break;
             case '-p':
             case '--create-update-aws-pipeline':
@@ -576,9 +578,10 @@ async function main() {
 
         if (createUpdateApolloServer) {
             try {
-                if (!quiet) spinner = ora('Creating Apollo server ZIP ...').start();
-                const apolloZipPath = outputFolderPath + '/output.apollo.zip';
-                await createApolloDeploymentPackage(__dirname + outputApolloPackagePath, apolloZipPath, neptuneInfo);
+                if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
+                const apolloZipPath = outputFolderPath + '/apollo.server.zip';
+                const apolloTemplatePath = '/../templates/ApolloHTTP'
+                await createApolloDeploymentPackage(__dirname + apolloTemplatePath, apolloZipPath, neptuneInfo);
                 if (!quiet) {
                     spinner.succeed('Created Apollo server ZIP');
                 }

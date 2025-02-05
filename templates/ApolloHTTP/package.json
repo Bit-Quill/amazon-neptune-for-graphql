@@ -1,8 +1,8 @@
 {
-  "name": "apollo-server-test",
+  "name": "apollo-server",
   "version": "1.0.0",
   "description": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "author": "",
   "type": "module",
   "main": "index.mjs",

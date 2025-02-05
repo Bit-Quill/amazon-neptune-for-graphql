@@ -7,7 +7,7 @@ import { gql } from 'apollo-server'; // maybe there is an equivalent in @apollo/
 import { queryNeptuneWithGraphQL } from './queryNeptune.mjs'
 
 
-const typeDefs = gql(readFileSync('./output.schema.graphql', 'utf-8'));
+const typeDefs = gql(readFileSync('./schema.graphql', 'utf-8'));
 
 
 const queryDefinition = typeDefs.definitions.find(
