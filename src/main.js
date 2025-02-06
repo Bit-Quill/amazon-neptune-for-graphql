@@ -580,8 +580,7 @@ async function main() {
             const apolloZipPath = outputFolderPath + '/apollo.server.zip';
             try {
                 if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
-                const apolloTemplatePath = '/../templates/ApolloHTTP'
-                await createApolloDeploymentPackage(__dirname + apolloTemplatePath, apolloZipPath, neptuneInfo);
+                await createApolloDeploymentPackage(apolloZipPath, neptuneInfo);
                 if (!quiet) {
                     spinner.succeed('Created Apollo server ZIP');
                 }

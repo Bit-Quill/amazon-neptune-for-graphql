@@ -8,7 +8,7 @@ function getModulePath() {
     return path.dirname(fileURLToPath(import.meta.url));
 }
 
-async function createLambdaDeploymentPackage(templatePath, zipFilePath, options = {http: false}) {
+export async function createLambdaDeploymentPackage(templatePath, zipFilePath, options = {http: false}) {
     try {
         const output = fs.createWriteStream(zipFilePath);
         const archive = archiver('zip', { zlib: { level: 9 } });
@@ -28,14 +28,14 @@ async function createLambdaDeploymentPackage(templatePath, zipFilePath, options 
 /**
  * Creates a zip package of Apollo Server deployment artifacts.
  *
- * @param templateFolderPath the template folder path that contains the file artifacts that should be included in the zip package
  * @param zipFilePath the file path where the zip should be created
  * @param neptuneInfo object containing neptune db/graph related information such as URL, region, etc
  * @returns {Promise<void>}
  */
-async function createApolloDeploymentPackage(templateFolderPath, zipFilePath, neptuneInfo) {
+export async function createApolloDeploymentPackage(zipFilePath, neptuneInfo) {
     const envInfo = `NEPTUNE_TYPE=${neptuneInfo.neptuneType}\nNEPTUNE_HOST=${neptuneInfo.host}\nNEPTUNE_PORT=${neptuneInfo.port}\nAWS_REGION=${neptuneInfo.region}\nLOGGING_ENABLED=false`;
     const modulePath = getModulePath();
+    const templateFolderPath = modulePath + '/../templates/ApolloServer';
     try {
         const archive = archiver('zip', {zlib: {level: 9}});
         archive.pipe(fs.createWriteStream(zipFilePath));
@@ -43,11 +43,10 @@ async function createApolloDeploymentPackage(templateFolderPath, zipFilePath, ne
         archive.append(envInfo, {name: ".env"});
         archive.file('./output/output.resolver.graphql.js', {name: 'output.resolver.graphql.js'})
         archive.file('./output/output.schema.graphql', {name: 'schema.graphql'})
+        // querying neptune using SDK not yet supported
         archive.file(modulePath + '/../templates/queryHttpNeptune.js', {name: 'queryHttpNeptune.js'})
         await archive.finalize();
     } catch (error) {
         loggerError('Apollo server deployment package creation failed', error);
     }
 }
-
-export { createLambdaDeploymentPackage, createApolloDeploymentPackage }
