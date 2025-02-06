@@ -577,9 +577,9 @@ async function main() {
         }
 
         if (createUpdateApolloServer) {
+            const apolloZipPath = outputFolderPath + '/apollo.server.zip';
             try {
                 if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
-                const apolloZipPath = outputFolderPath + '/apollo.server.zip';
                 const apolloTemplatePath = '/../templates/ApolloHTTP'
                 await createApolloDeploymentPackage(__dirname + apolloTemplatePath, apolloZipPath, neptuneInfo);
                 if (!quiet) {
@@ -601,7 +601,7 @@ async function main() {
 
             try {
                 if (!quiet) spinner = ora('Creating Lambda ZIP ...').start();
-                await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile);                                
+                await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile, {http: queryClient === 'http'});
                 if (!quiet) {
                     spinner.succeed('Created Lambda ZIP');
                 }

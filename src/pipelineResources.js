@@ -49,6 +49,7 @@ import ora from 'ora';
 import { exit } from "process";
 import { loggerDebug, loggerError, loggerInfo, yellow } from './logger.js';
 import { parseNeptuneDomainFromHost } from "./util.js";
+import { createLambdaDeploymentPackage } from "./package.js";
 
 const NEPTUNE_DB = 'neptune-db';
 
@@ -390,12 +391,7 @@ async function createLambdaRole() {
 
 async function createDeploymentPackage(folderPath) {       
     const zipFilePath = `${thisOutputFolderPath}/${NAME}.zip`;
-    const output = fs.createWriteStream(zipFilePath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.pipe(output);
-    archive.directory(folderPath, false);
-    archive.file(`${thisOutputFolderPath}/output.resolver.graphql.js`, { name: 'output.resolver.graphql.js' })
-    await archive.finalize();
+    await createLambdaDeploymentPackage(folderPath, zipFilePath, {http: folderPath.includes('HTTP')})
     await sleep(2000);
     const fileContent = await fs.readFileSync(zipFilePath);
     return fileContent;    
