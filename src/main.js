@@ -20,18 +20,16 @@ import { resolverJS } from './resolverJS.js';
 import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema.js';
 import { createUpdateAWSpipeline, removeAWSpipelineResources, createLambdaDeploymentPackage } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
-import { createApolloDeploymentPackage } from './zipPackage.js'
+import { createApolloDeploymentPackage, getModulePath } from './zipPackage.js'
 import { loggerDebug, loggerError, loggerInfo, loggerInit, yellow } from './logger.js';
 
 import ora from 'ora';
 let spinner = null;
 
-// find global installation dir
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { parseNeptuneEndpoint } from "./util.js";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// find global installation dir
+const __dirname = getModulePath();
 
 // get version
 const version = JSON.parse(readFileSync(__dirname + '/../package.json')).version;

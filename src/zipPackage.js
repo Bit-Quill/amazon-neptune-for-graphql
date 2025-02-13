@@ -4,22 +4,25 @@ import {loggerError} from "./logger.js";
 import path from "path";
 import {fileURLToPath} from "url";
 
-function getModulePath() {
+export function getModulePath() {
     return path.dirname(fileURLToPath(import.meta.url));
 }
 
-export async function createZip({targetZipFilePath, includeFolderPaths = [], includeFilePaths = []}) {
+export async function createZip({targetZipFilePath, includeFolderPaths = [], includeFilePaths = [], includeContent = []}) {
     try {
         const output = fs.createWriteStream(targetZipFilePath);
         const archive = archiver('zip', {zlib: {level: 9}});
         archive.pipe(output);
         includeFolderPaths.forEach(folderPath => {
-            // put folder contents in root of archive, not in a sub-folder
-            archive.directory(folderPath, false);
+            // if no target specified, add contents to root of archive
+            archive.directory(folderPath.source, folderPath.target ?? false);
         });
         includeFilePaths.forEach(filePath => {
             archive.file(filePath.source, {name: filePath.target})
         })
+        includeContent.forEach(content => {
+            archive.append(content.source, {name: content.target});
+        });
         await archive.finalize();
     } catch (error) {
         loggerError('Zip creation failed', error);
@@ -48,17 +51,18 @@ export async function createApolloDeploymentPackage(zipFilePath, resolverFilePat
         `SUBGRAPH=${options?.subgraph || false}`
     ];
     const modulePath = getModulePath();
-    const templateFolderPath = `${modulePath}/../templates/ApolloServer`;
     try {
-        const archive = archiver('zip', {zlib: {level: 9}});
-        archive.pipe(fs.createWriteStream(zipFilePath));
-        archive.directory(templateFolderPath, false);
-        archive.append(envVars.join('\n'), {name: ".env"});
-        archive.file(resolverFilePath, {name: 'output.resolver.graphql.js'})
-        archive.file(schemaFilePath, {name: 'schema.graphql'})
-        // querying neptune using SDK not yet supported
-        archive.file(modulePath + '/../templates/queryHttpNeptune.mjs', {name: 'queryHttpNeptune.mjs'})
-        await archive.finalize();
+        await createZip({
+            targetZipFilePath: zipFilePath,
+            includeFolderPaths: [{source: path.join(modulePath, '/../templates/ApolloServer')}],
+            includeFilePaths: [
+                {source: resolverFilePath, target: 'output.resolver.graphql.js'},
+                {source: schemaFilePath, target: 'schema.graphql'},
+                // querying neptune using SDK not yet supported
+                {source: path.join(modulePath, '/../templates/queryHttpNeptune.mjs'), target: 'queryHttpNeptune.mjs'}
+            ],
+            includeContent: [{source: envVars.join('\n'), target: '.env'}]
+        })
     } catch (error) {
         loggerError('Apollo server deployment package creation failed', error);
         throw error;

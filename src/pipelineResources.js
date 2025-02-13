@@ -48,7 +48,7 @@ import ora from 'ora';
 import { exit } from "process";
 import { loggerDebug, loggerError, loggerInfo, yellow } from './logger.js';
 import { parseNeptuneDomainFromHost } from "./util.js";
-import { createZip } from "./zipPackage.js";
+import { createZip, getModulePath } from "./zipPackage.js";
 import path from "path";
 import {fileURLToPath} from "url";
 
@@ -390,18 +390,16 @@ async function createLambdaRole() {
 }
 
 async function createLambdaDeploymentPackage({outputZipFilePath, templateFolderPath, resolverFilePath}) {
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
     const nonTemplateFiles = [{source: resolverFilePath, target: 'output.resolver.graphql.js'}];
     if (templateFolderPath.includes('HTTP')) {
         nonTemplateFiles.push({
-            source: path.join(__dirname, '/../templates/queryHttpNeptune.mjs'),
+            source: path.join(getModulePath(), '/../templates/queryHttpNeptune.mjs'),
             target: 'queryHttpNeptune.mjs'
         })
     }
     await createZip({
         targetZipFilePath: outputZipFilePath,
-        includeFolderPaths: [templateFolderPath],
+        includeFolderPaths: [{source: templateFolderPath}],
         includeFilePaths: nonTemplateFiles
     });
 }
