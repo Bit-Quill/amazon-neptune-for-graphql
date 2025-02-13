@@ -276,8 +276,12 @@ See CDK end to end example [here](https://github.com/aws/amazon-neptune-for-grap
 If you prefer to use Apollo Server instead of AWS App Sync, the utility can generate a ZIP file of Apollo Server artifacts with the CLI option `--create-update-apollo-server` for a standalone server or `--create-update-apollo-server-subgraph` for federated systems.
 
 For example:
-`neptune-for-graphql --input-graphdb-schema-neptune-endpoint
-abc.us-west-2.neptune.amazonaws.com:8182 --create-update-apollo-server --output-resolver-query-https`
+```
+neptune-for-graphql \
+  --input-graphdb-schema-neptune-endpoint abc.us-west-2.neptune.amazonaws.com:8182 \
+  --create-update-apollo-server \
+  --output-resolver-query-https
+```
 
 The command above will generate an `apollo-server.zip` file which can then be deployed locally by following these steps:
 1. unzip `apollo-server.zip`
@@ -286,7 +290,8 @@ The command above will generate an `apollo-server.zip` file which can then be de
 4. execute `node index.mjs` to start the Apollo Server
 5. access the graphQL application in a browser by visiting `http://localhost:4000/`
 
-Note that Node's default AWS credentials provider is used for authentication with Neptune. See [AWS SDK credential providers](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-credential-providers/#fromnodeproviderchain) for more information.
+> [!NOTE] 
+> Node's default AWS credentials provider is used for authentication with Neptune. See [AWS SDK credential providers](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/Package/-aws-sdk-credential-providers/#fromnodeproviderchain) for more information.
 
 # Known limitations
 - @graphQuery using Gremlin works only if the query returns a scalar value, one elementMap(), or list as elementMap().fold(), this feature is under development.

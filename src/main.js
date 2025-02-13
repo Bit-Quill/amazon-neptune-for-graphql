@@ -18,9 +18,9 @@ import { schemaParser, schemaStringify } from './schemaParser.js';
 import { validatedSchemaModel} from './schemaModelValidator.js';
 import { resolverJS } from './resolverJS.js';
 import { getNeptuneSchema, setGetNeptuneSchemaParameters } from './NeptuneSchema.js';
-import { createUpdateAWSpipeline, removeAWSpipelineResources } from './pipelineResources.js'
+import { createUpdateAWSpipeline, removeAWSpipelineResources, createLambdaDeploymentPackage } from './pipelineResources.js'
 import { createAWSpipelineCDK } from './CDKPipelineApp.js'
-import { createApolloDeploymentPackage, createLambdaDeploymentPackage } from './zipPackage.js'
+import { createApolloDeploymentPackage } from './zipPackage.js'
 import { loggerDebug, loggerError, loggerInfo, loggerInit, yellow } from './logger.js';
 
 import ora from 'ora';
@@ -602,13 +602,18 @@ async function main() {
         if (createUpdateApolloServer || createUpdateApolloServerSubgraph) {
             const apolloZipPath = path.join(outputFolderPath, 'apollo.server.zip');
             try {
-                if (!quiet) spinner = ora('Creating Apollo server ZIP file ...').start();
+                if (!quiet) {
+                    spinner = ora('Creating Apollo server ZIP file ...').start();
+                }
                 await createApolloDeploymentPackage(apolloZipPath, outputLambdaResolverFile, outputSchemaFile, neptuneInfo, {subgraph: createUpdateApolloServerSubgraph});
                 if (!quiet) {
                     spinner.succeed('Created Apollo server ZIP');
                 }
                 loggerInfo('Created Apollo server ZIP file: ' + yellow(apolloZipPath), {toConsole: true});
             } catch (err) {
+                if (!quiet) {
+                    spinner.fail();
+                }
                 loggerError('Error creating Apollo server ZIP file: ' + yellow(apolloZipPath), err);
             }
         }
@@ -623,7 +628,11 @@ async function main() {
 
             try {
                 if (!quiet) spinner = ora('Creating Lambda ZIP ...').start();
-                await createLambdaDeploymentPackage(__dirname + outputLambdaPackagePath, outputLambdaResolverZipFile, outputLambdaResolverFile, {http: queryClient === 'http'});
+                await createLambdaDeploymentPackage({
+                    outputZipFilePath: outputLambdaResolverZipFile,
+                    templateFolderPath: path.join(__dirname, outputLambdaPackagePath),
+                    resolverFilePath: outputLambdaResolverFile
+                });
                 if (!quiet) {
                     spinner.succeed('Created Lambda ZIP');
                 }

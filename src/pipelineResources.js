@@ -44,12 +44,13 @@ import { AppSyncClient,
     ListResolversCommand } from "@aws-sdk/client-appsync";
 
 import fs from 'fs';
-import archiver from 'archiver';
 import ora from 'ora';
 import { exit } from "process";
 import { loggerDebug, loggerError, loggerInfo, yellow } from './logger.js';
 import { parseNeptuneDomainFromHost } from "./util.js";
-import { createLambdaDeploymentPackage } from "./zipPackage.js";
+import { createZip } from "./zipPackage.js";
+import path from "path";
+import {fileURLToPath} from "url";
 
 const NEPTUNE_DB = 'neptune-db';
 
@@ -388,6 +389,23 @@ async function createLambdaRole() {
 
 }
 
+async function createLambdaDeploymentPackage({outputZipFilePath, templateFolderPath, resolverFilePath}) {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const nonTemplateFiles = [{source: resolverFilePath, target: 'output.resolver.graphql.js'}];
+    if (templateFolderPath.includes('HTTP')) {
+        nonTemplateFiles.push({
+            source: path.join(__dirname, '/../templates/queryHttpNeptune.mjs'),
+            target: 'queryHttpNeptune.mjs'
+        })
+    }
+    await createZip({
+        targetZipFilePath: outputZipFilePath,
+        includeFolderPaths: [templateFolderPath],
+        includeFilePaths: nonTemplateFiles
+    });
+}
+
 /**
  * Creates the lambda deployment ZIP package
  * @param templateFolderPath the path to the template folder that contains contents to add to the zip
@@ -395,8 +413,12 @@ async function createLambdaRole() {
  * @returns {Promise<Buffer<ArrayBufferLike>>}
  */
 async function createDeploymentPackage(templateFolderPath, resolverFilePath) {
-    const zipFilePath = `${thisOutputFolderPath}/${NAME}.zip`;
-    await createLambdaDeploymentPackage(templateFolderPath, zipFilePath, resolverFilePath, {http: templateFolderPath.includes('HTTP')})
+    const zipFilePath = path.join(thisOutputFolderPath, `${NAME}.zip`);
+    await createLambdaDeploymentPackage({
+        outputZipFilePath: zipFilePath,
+        templateFolderPath: templateFolderPath,
+        resolverFilePath: resolverFilePath
+    });
     await sleep(2000);
     const fileContent = await fs.readFileSync(zipFilePath);
     return fileContent;    
@@ -1034,5 +1056,5 @@ async function createUpdateAWSpipeline (    pipelineName,
     }
 }
 
-export { createUpdateAWSpipeline, getNeptuneClusterDbInfoBy, removeAWSpipelineResources }
+export { createUpdateAWSpipeline, getNeptuneClusterDbInfoBy, removeAWSpipelineResources, createLambdaDeploymentPackage }
 

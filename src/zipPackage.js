@@ -8,30 +8,22 @@ function getModulePath() {
     return path.dirname(fileURLToPath(import.meta.url));
 }
 
-/**
- * Creates a zip package of AWS Lambda deployment artifacts.
- *
- * @param templatePath path of the template folder that contains the template artifacts that should be included in the zip
- * @param zipFilePath path where the zip should be created
- * @param resolverFilePath path to the resolver file to include in the zip
- * @param options additional options which can determine the contents of the zip
- * @param options.http true if the lambda should use http to query neptune
- * @returns {Promise<void>}
- */
-export async function createLambdaDeploymentPackage(templatePath, zipFilePath, resolverFilePath, options = {http: false}) {
+export async function createZip({targetZipFilePath, includeFolderPaths = [], includeFilePaths = []}) {
     try {
-        const output = fs.createWriteStream(zipFilePath);
+        const output = fs.createWriteStream(targetZipFilePath);
         const archive = archiver('zip', {zlib: {level: 9}});
         archive.pipe(output);
-        archive.directory(templatePath, false);
-        archive.file(resolverFilePath, {name: 'output.resolver.graphql.js'})
-        if (options?.http) {
-            const modulePath = getModulePath();
-            archive.file(modulePath + '/../templates/queryHttpNeptune.mjs', {name: 'queryHttpNeptune.mjs'})
-        }
+        includeFolderPaths.forEach(folderPath => {
+            // put folder contents in root of archive, not in a sub-folder
+            archive.directory(folderPath, false);
+        });
+        includeFilePaths.forEach(filePath => {
+            archive.file(filePath.source, {name: filePath.target})
+        })
         await archive.finalize();
     } catch (error) {
-        loggerError('Lambda deployment package creation failed', error);
+        loggerError('Zip creation failed', error);
+        throw error;
     }
 }
 
