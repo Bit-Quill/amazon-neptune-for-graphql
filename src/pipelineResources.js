@@ -48,9 +48,8 @@ import ora from 'ora';
 import { exit } from "process";
 import { loggerDebug, loggerError, loggerInfo, yellow } from './logger.js';
 import { parseNeptuneDomainFromHost } from "./util.js";
-import { createZip, getModulePath } from "./zipPackage.js";
+import { createLambdaDeploymentPackage } from "./zipPackage.js";
 import path from "path";
-import {fileURLToPath} from "url";
 
 const NEPTUNE_DB = 'neptune-db';
 
@@ -387,21 +386,6 @@ async function createLambdaRole() {
         succeedSpinner(`Attached ${yellow('AWSLambdaVPCAccessExecutionRole')} policies to role`, {logLevel: 'info'});
     }
 
-}
-
-async function createLambdaDeploymentPackage({outputZipFilePath, templateFolderPath, resolverFilePath}) {
-    const nonTemplateFiles = [{source: resolverFilePath, target: 'output.resolver.graphql.js'}];
-    if (templateFolderPath.includes('HTTP')) {
-        nonTemplateFiles.push({
-            source: path.join(getModulePath(), '/../templates/queryHttpNeptune.mjs'),
-            target: 'queryHttpNeptune.mjs'
-        })
-    }
-    await createZip({
-        targetZipFilePath: outputZipFilePath,
-        includeFolderPaths: [{source: templateFolderPath}],
-        includeFilePaths: nonTemplateFiles
-    });
 }
 
 /**
@@ -1054,5 +1038,5 @@ async function createUpdateAWSpipeline (    pipelineName,
     }
 }
 
-export { createUpdateAWSpipeline, getNeptuneClusterDbInfoBy, removeAWSpipelineResources, createLambdaDeploymentPackage }
+export { createUpdateAWSpipeline, getNeptuneClusterDbInfoBy, removeAWSpipelineResources }
 
