@@ -58,6 +58,7 @@ export async function queryNeptune(neptuneUrl, resolvedQuery, options = {logging
         if (resolvedQuery.language === 'opencypher') {
             let openCypherData = response.data;
             if (openCypherData.results.length === 0) {
+                // this happens if a query for a single entity using match clause with limit 1 does not find any result
                 return null;
             }
             let jsonData = openCypherData.results[0][Object.keys(openCypherData.results[0])[0]];
