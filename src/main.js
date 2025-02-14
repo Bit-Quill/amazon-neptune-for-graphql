@@ -598,7 +598,7 @@ async function main() {
 
         // output Apollo zip
         if (createUpdateApolloServer || createUpdateApolloServerSubgraph) {
-            const apolloZipPath = path.join(outputFolderPath, 'apollo.server.zip');
+            const apolloZipPath = path.join(outputFolderPath, `apollo-server-${neptuneInfo.graphName}-${new Date().getTime()}.zip`);
             try {
                 if (!quiet) {
                     spinner = ora('Creating Apollo server ZIP file ...').start();
