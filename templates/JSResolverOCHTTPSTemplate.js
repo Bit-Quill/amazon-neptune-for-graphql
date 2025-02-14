@@ -85,7 +85,7 @@ export function resolveGraphDBQueryFromEvent(event) {
         ]
     };
 
-    const graphQuery = resolveGraphDBQuery(obj);
+    const graphQuery = resolveGraphDBQuery(obj, event.arguments);
     return graphQuery;
 }
     
@@ -324,7 +324,7 @@ function getSchemaTypeInfo(lastTypeName, typeName, pathName) {
                         }
                     }
                 });
-            
+
             }
         }
     });
@@ -333,10 +333,10 @@ function getSchemaTypeInfo(lastTypeName, typeName, pathName) {
 
     return r;
 }
-  
-  
+
+
 function getSchemaFieldInfo(typeName, fieldName, pathName) {
-    const r = { 
+    const r = {
         name: fieldName,
         alias: '',
         type: '',
@@ -344,7 +344,7 @@ function getSchemaFieldInfo(typeName, fieldName, pathName) {
         pathName: '',
         isId: false,
         isArray: false,
-        isRequired: false,   
+        isRequired: false,
         graphQuery: null,
         relationship: null,
         args:[],
@@ -360,14 +360,14 @@ function getSchemaFieldInfo(typeName, fieldName, pathName) {
                 def.fields.forEach(field => {
                     if (field.name.value === fieldName) {
                         r.name = field.name.value;
-                        r.alias = r.name;                        
+                        r.alias = r.name;
                         if (field.type.kind === 'ListType') {
                             r.isArray = true;
                             r.type = field.type.type.name.value;
                         }
                         if (field.type.kind === 'NamedType') {
                             r.isArray = false;
-                            r.type = field.type.name.value;    
+                            r.type = field.type.name.value;
                         }
                         if (field.type.kind === 'NonNullType') {
                             r.isArray = false;
@@ -378,13 +378,13 @@ function getSchemaFieldInfo(typeName, fieldName, pathName) {
                             field.directives.forEach(directive => {
                                 if (directive.name.value === 'alias') {
                                     r.alias = directive.arguments[0].value.value;
-                                }                                
+                                }
                                 if (directive.name.value === 'graphQuery' || directive.name.value === 'Cypher' || directive.name.value === 'cypher') {
                                     r.graphQuery = directive.arguments[0].value.value;
-                                    if (fieldName == 'id') { 
+                                    if (fieldName == 'id') {
                                         r.graphQuery = r.graphQuery.replace(' as id', '');
                                         r.graphQuery = r.graphQuery.replace(' AS id', '');
-                                    }                 
+                                    }
                                 }
                                 if (directive.name.value === 'id')
                                     r.graphDBIdArgName = r.name;
@@ -428,24 +428,16 @@ function getSchemaFieldInfo(typeName, fieldName, pathName) {
 }
 
 
-function getOptionsInSchemaInfo(fields, schemaInfo) {
-    fields.forEach( field => {
-        if (field.name.value == 'limit') {            
-            schemaInfo.argOptionsLimit = field.value.value;
-        }
-        /* TODO        
-        if (field.name.value == 'offset') {            
-            schemaInfo.argOptionsOffset = field.value.value;
-        }
-        if (field.name.value == 'orderBy') {            
-            schemaInfo.argOptionsOrderBy = field.value.value;
-        }
-        */        
-    });    
+function setOptionsInSchemaInfo(options, schemaInfo) {
+    // only limit supported for now
+    let specifiedLimit = options['limit'];
+    if (specifiedLimit) {
+        schemaInfo.argOptionsLimit = specifiedLimit;
+    }
 }
 
-  
-function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo) {        
+
+function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo, args) {
     if (querySchemaInfo.graphQuery != null) {
         var gq = querySchemaInfo.graphQuery.replaceAll('this', querySchemaInfo.pathName);
         obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
@@ -456,8 +448,8 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
             
     } else {
 
-        let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
-        
+        let { queryArguments, where } = getOpenCypherQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo, args);
+
         if  (queryArguments.length > 0) {
             matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`{${queryArguments}})${where}`);
         } else {
@@ -471,24 +463,29 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});
 }
 
-
-function getQueryArguments(args, querySchemaInfo) {
+/**
+ * Obtain a comma separated list of open cypher query arguments
+ *
+ * @param selectionSetArgs array of selection set Arguments from the graphQL query AST
+ * @param querySchemaInfo graphQL query schema information
+ * @param args graphQL query arguments object
+ * @returns {{queryArguments: string, where: string}}
+ */
+function getOpenCypherQueryArguments(selectionSetArgs, querySchemaInfo, args = {}) {
     let where = '';
-    let queryArguments = '';    
-    args.forEach(arg => {
-        if (arg.name.value == 'filter') {
-            let inputFields = transformFunctionInputParameters(arg.value.fields, querySchemaInfo);
-            queryArguments = queryArguments + inputFields.fields + ",";
+    let queryArguments = '';
+    selectionSetArgs.forEach(arg => {
+        if (arg.name.value === 'filter') {
+            const filterFields = transformAndSetFilterParams(args['filter'], querySchemaInfo);
+            queryArguments = queryArguments + filterFields.fields + ",";
 
-            if (inputFields.graphIdValue != null) {                
+            if (filterFields.graphIdValue != null) {
                 let param = querySchemaInfo.pathName + '_' + 'whereId';
-                Object.assign(parameters, { [param]: inputFields.graphIdValue });
+                Object.assign(parameters, {[param]: filterFields.graphIdValue});
                 where = ` WHERE ID(${querySchemaInfo.pathName}) = $${param}`;
             }
-
-        } else if (arg.name.value == 'options') {
-            if (arg.value.kind === 'ObjectValue')
-                getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
+        } else if (arg.name.value === 'options') {
+            setOptionsInSchemaInfo(args['options'], querySchemaInfo);
         } else {
             queryArguments = queryArguments + arg.name.value + ":'" + arg.value.value + "',";
         }
@@ -620,7 +617,7 @@ function createTypeFieldStatementAndRecurse(e, fieldSchemaInfo, lastNamePath, la
     }
    
 
-    let { queryArguments, where } = getQueryArguments(e.arguments, fieldSchemaInfo);
+    let { queryArguments, where } = getOpenCypherQueryArguments(e.arguments, fieldSchemaInfo);
     if (queryArguments != '')
         queryArguments = '{' + queryArguments + '}';
 
@@ -723,12 +720,12 @@ function finalizeGraphQuery(matchStatements, withStatements, returnString) {
     // make the oc query string
     return ocMatchStatements + ocWithStatements + '\nRETURN ' + ocReturnStatement;
 }
-    
-  
-function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
-                          
-    createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo);
-    
+
+
+function resolveGraphDBqueryForGraphQLQuery (obj, querySchemaInfo, args) {
+
+    createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo, args);
+
     // start processing the given query
     if (querySchemaInfo.returnIsArray) {
         returnString.push('collect(');
@@ -786,8 +783,32 @@ function transformFunctionInputParameters(fields, schemaInfo) {
     
     return r;
 }
-  
-  
+
+function transformAndSetFilterParams(filterParams, schemaInfo) {
+    let fields = [];
+    let id = null;
+    schemaInfo.args.forEach(arg => {
+        if (filterParams[arg.name]) {
+            const filterValue = filterParams[arg.name];
+
+            if (arg.name === schemaInfo.graphDBIdArgName) {
+                // filtering by node id
+                id = filterValue;
+            } else {
+                const param = `${schemaInfo.pathName}_${arg.alias || arg.name}`;
+                fields.push(`${arg.alias || arg.name}: $${param}`);
+                parameters[param] = filterValue;
+            }
+        }
+    });
+
+    return {
+        fields: fields.join(', '),
+        graphIdValue: id
+    };
+}
+
+
 function returnStringOnly(selections, querySchemaInfo) {
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});    
     selectionsRecurse(selections, querySchemaInfo.pathName, querySchemaInfo.returnType);
@@ -941,7 +962,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
 }
      
     
-function resolveOpenCypherQuery(obj, querySchemaInfo) {
+function resolveOpenCypherQuery(obj, querySchemaInfo, args) {
     let ocQuery = '';
 
     // clear 
@@ -951,7 +972,7 @@ function resolveOpenCypherQuery(obj, querySchemaInfo) {
     parameters = {};
 
     if (querySchemaInfo.type === 'Query') {
-        ocQuery = resolveGrapgDBqueryForGraphQLQuery(obj, querySchemaInfo);
+        ocQuery = resolveGraphDBqueryForGraphQLQuery(obj, querySchemaInfo, args);
     }
 
     if (querySchemaInfo.type === 'Mutation') {
@@ -1095,9 +1116,10 @@ function parseQueryInput(queryObjOrStr) {
  * Accepts a GraphQL document or query string and outputs the graphDB query.
  *
  * @param {(Object|string)} queryObjOrStr the GraphQL document containing an operation to resolve
+ * @param {object} queryArguments the arguments object provided to the query
  * @returns {string}
  */
-export function resolveGraphDBQuery(queryObjOrStr) {
+export function resolveGraphDBQuery(queryObjOrStr, queryArguments) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
 
     const obj = parseQueryInput(queryObjOrStr);
@@ -1109,13 +1131,13 @@ export function resolveGraphDBQuery(queryObjOrStr) {
             executeQuery.language = 'gremlin'
         }
     }
-            
-    if (executeQuery.language == 'opencypher') {
-        executeQuery.query = resolveOpenCypherQuery(obj, querySchemaInfo);
+
+    if (executeQuery.language === 'opencypher') {
+        executeQuery.query = resolveOpenCypherQuery(obj, querySchemaInfo, queryArguments);
         executeQuery.parameters = parameters;
     }
-     
-    if (executeQuery.language == 'gremlin') {
+
+    if (executeQuery.language === 'gremlin') {
         executeQuery = resolveGremlinQuery(obj, querySchemaInfo);
     }
     
