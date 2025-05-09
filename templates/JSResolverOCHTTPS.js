@@ -781,8 +781,11 @@ function transformFunctionInputParameters(fields, schemaInfo) {
     schemaInfo.args.forEach(arg => {
         fields.forEach(field => {
             if (field.name.value === arg.name) {
-                let value = field.value.value;
-                if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
+                let value = field.value?.value;
+                if (arg.type === 'StringScalarFilters') {
+                    let f = field.value.fields.find(f => f.kind === 'ObjectField' && f.value.kind === 'StringValue');
+                    value = f.value.value;
+                } else if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
                     value = Number(value);
                 }
                 if (arg.name === schemaInfo.graphDBIdArgName) {
