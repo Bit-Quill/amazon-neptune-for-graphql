@@ -258,6 +258,14 @@ function graphDBInferenceSchema (graphbSchema, addMutations) {
     r += `input Options {\n`;
     r += `\tlimit:Int\n`;
     r += '}\n\n';
+    
+    r += 'input StringScalarFilters {\n' +
+        '\teq: String\n' +
+        '\tin: [String!]\n' +
+        '\tcontains: String\n' +
+        '\tendsWith: String\n' +
+        '\tstartsWith: String\n' +
+        '}';
 
     // query
     r += `type Query {\n`;

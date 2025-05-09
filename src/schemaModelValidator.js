@@ -384,6 +384,13 @@ function inferGraphDatabaseDirectives(schemaModel) {
     });
 
     typesToAdd.push(`input Options {\n  limit: Int\n}\n`);
+    typesToAdd.push('input StringScalarFilters {\n' +
+        '\teq: String\n' +
+        '\tin: [String!]\n' +
+        '\tcontains: String\n' +
+        '\tendsWith: String\n' +
+        '\tstartsWith: String\n' +
+        '}');
 
     return injectChanges(schemaModel);
 }
