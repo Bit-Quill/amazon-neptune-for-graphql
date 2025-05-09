@@ -142,7 +142,8 @@ function addNode(def) {
     const idField = getIdFieldWithDirective(def);
 
     // Create Input type
-    typesToAdd.push(`input ${name}Input {\n${print(getInputFields(def))}\n}`);    
+    let inputFields = getInputFields(def);
+    typesToAdd.push(`input ${name}Input {\n${print(inputFields)}\n}`);    
 
     // Create query
     queriesToAdd.push(`getNode${name}(filter: ${name}Input, options: Options): ${name}\n`);
@@ -343,6 +344,13 @@ function inferGraphDatabaseDirectives(schemaModel) {
     });
 
     typesToAdd.push(`input Options {\n  limit: Int\n}\n`);
+    typesToAdd.push('input StringScalarFilters {\n' +
+        '\teq: String\n' +
+        '\tin: [String!]\n' +
+        '\tcontains: String\n' +
+        '\tendsWith: String\n' +
+        '\tstartsWith: String\n' +
+        '}');
 
     return injectChanges(schemaModel);
 }
