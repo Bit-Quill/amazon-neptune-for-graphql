@@ -17,14 +17,22 @@ describe('validatedSchemaModel', () => {
         const objTypeDefs = model.definitions.filter(def => def.kind === 'ObjectTypeDefinition');
         const userType = objTypeDefs.find(def => def.name.value === 'User');
         const groupType = objTypeDefs.find(def => def.name.value === 'Group');
+        const roleType = objTypeDefs.find(def => def.name.value === 'Role');
 
+        expect(userType.fields).toHaveLength(3);
+        expect(groupType.fields).toHaveLength(2);
+        expect(roleType.fields).toHaveLength(2);
+        
         const userIdFields = getIdFields(userType);
         const groupIdFields = getIdFields(groupType);
+        const roleIdFields = getIdFields(roleType);
 
         expect(userIdFields).toHaveLength(1);
         expect(groupIdFields).toHaveLength(1);
+        expect(roleIdFields).toHaveLength(1);
         expect(userIdFields[0].name.value).toEqual('userId');
         expect(groupIdFields[0].name.value).toEqual('_id');
+        expect(roleIdFields[0].name.value).toEqual('roleId');
     });
 
     test('should define the same ID fields on a type and its input type', () => {

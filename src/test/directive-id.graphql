@@ -7,3 +7,9 @@ type User {
 type Group {
     name: String
 }
+
+type Role {
+#   id field does not have directive
+    roleId: ID!
+    name: String
+}
