@@ -462,24 +462,24 @@ function getOptionsInSchemaInfo(fields, schemaInfo) {
     });    
 }
 
-  
-function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo) {        
+
+function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo) {
     if (querySchemaInfo.graphQuery != null) {
         var gq = querySchemaInfo.graphQuery.replaceAll('this', querySchemaInfo.pathName);
         obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
             gq = gq.replace('$' + arg.name.value, arg.value.value);
         });
-                
+
         matchStatements.push(gq);
-            
+
     } else {
 
         let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
-        
+
         if  (queryArguments.length > 0) {
             matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`{${queryArguments}})${where}`);
         } else {
-            matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`)${where}`);
+            matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`) WHERE ${where.join(' AND ')}`);
         }
 
         if (querySchemaInfo.argOptionsLimit != null)
@@ -491,27 +491,28 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
 
 
 function getQueryArguments(args, querySchemaInfo) {
-    let where = '';
-    let queryArguments = '';    
+    let queryArguments = '';
+    let where = [];
     args.forEach(arg => {
-        if (arg.name.value == 'filter') {
-            let inputFields = transformFunctionInputParameters(arg.value.fields, querySchemaInfo);
-            queryArguments = queryArguments + inputFields.fields + ",";
-
-            if (inputFields.graphIdValue != null) {                
-                let param = querySchemaInfo.pathName + '_' + 'whereId';
-                Object.assign(parameters, { [param]: inputFields.graphIdValue });
-                where = ` WHERE ID(${querySchemaInfo.pathName}) = $${param}`;
+        if (arg.name.value === 'filter') {
+            const filters = transformFunctionInputParameters(arg.value.fields, querySchemaInfo);
+            for (let i = 0; i < filters.length; i++) {
+                const f = filters[i];
+                if (f.name === querySchemaInfo.graphDBIdArgName) {
+                    let param = querySchemaInfo.pathName + '_' + filters[i].name;
+                    Object.assign(parameters, { [param]: filters[i].value });
+                    where.push(`ID(${querySchemaInfo.pathName}) = $${param}`);
+                } else {
+                    where.push(`${querySchemaInfo.pathName}.${f.name}='${f.value}'`);
+                }
             }
-
-        } else if (arg.name.value == 'options') {
+        } else if (arg.name.value === 'options') {
             if (arg.value.kind === 'ObjectValue')
                 getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
         } else {
             queryArguments = queryArguments + arg.name.value + ":'" + arg.value.value + "',";
         }
     });
-    queryArguments = queryArguments.substring(0, queryArguments.length - 1);
     return { queryArguments, where };
 }
 
