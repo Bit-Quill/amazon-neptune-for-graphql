@@ -492,18 +492,18 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
 
 function getQueryArguments(args, querySchemaInfo) {
     let queryArguments = '';
-    let where = [];
+    let whereClauses = [];
     args.forEach(arg => {
         if (arg.name.value === 'filter') {
-            const filters = transformFunctionInputParameters(arg.value.fields, querySchemaInfo);
+            const filters = getFiltersFromQueryArgumentFields(arg.value.fields, querySchemaInfo);
             for (let i = 0; i < filters.length; i++) {
                 const f = filters[i];
+                let param = querySchemaInfo.pathName + '_' + f.name;
+                Object.assign(parameters, { [param]: f.value });
                 if (f.name === querySchemaInfo.graphDBIdArgName) {
-                    let param = querySchemaInfo.pathName + '_' + filters[i].name;
-                    Object.assign(parameters, { [param]: filters[i].value });
-                    where.push(`ID(${querySchemaInfo.pathName}) = $${param}`);
+                    whereClauses.push(`ID(${querySchemaInfo.pathName})=$${param}`);
                 } else {
-                    where.push(`${querySchemaInfo.pathName}.${f.name}='${f.value}'`);
+                    whereClauses.push(`${querySchemaInfo.pathName}.${f.name}=$${param}`);
                 }
             }
         } else if (arg.name.value === 'options') {
@@ -513,7 +513,7 @@ function getQueryArguments(args, querySchemaInfo) {
             queryArguments = queryArguments + arg.name.value + ":'" + arg.value.value + "',";
         }
     });
-    return { queryArguments, where };
+    return { queryArguments, where: whereClauses };
 }
 
 
@@ -777,36 +777,28 @@ function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
 }
   
   
-function transformFunctionInputParameters(fields, schemaInfo) {
-    let r = { fields:'', graphIdValue: null };
+function getFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
+    const filters = [];
     schemaInfo.args.forEach(arg => {
-        fields.forEach(field => {
-            if (field.name.value === arg.name) {
-                let value = field.value?.value;
+        queryArgumentFields.forEach(field => {
+            if (field.name?.value === arg.name) {
+                let argValue = field.value?.value;
                 if (arg.type === 'StringScalarFilters') {
-                    let f = field.value.fields.find(f => f.kind === 'ObjectField' && f.value.kind === 'StringValue');
-                    value = f.value.value;
-                } else if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
-                    value = Number(value);
+                    // TODO discern between string comparison operators EQ,CONTAINS
+                    argValue = field.value?.fields?.find(f => f.kind === 'ObjectField' && f.value?.kind === 'StringValue')?.value?.value;
+                } else if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
+                    argValue = Number(argValue);
                 }
-                if (arg.name === schemaInfo.graphDBIdArgName) {
-                    r.graphIdValue = value
-                } else if (arg.alias != null) {
-                    let param = schemaInfo.pathName + '_' + arg.alias;
-                    r.fields += `${arg.alias}: $${param}, `;
-                    Object.assign(parameters, { [param]: value });
-                } else  {
-                    let param = schemaInfo.pathName + '_' + arg.name;
-                    r.fields += `${arg.name}: $${param}, `;
-                    Object.assign(parameters, { [param]: value });
+                let argName = arg.name;
+                if (arg.alias) {
+                    argName = arg.alias;
                 }
+                filters.push({name: argName, value: argValue})
             }
         });
     });
 
-    r.fields = r.fields.substring(0, r.fields.length - 2);
-    
-    return r;
+    return filters;
 }
   
   
@@ -821,7 +813,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
     
     // createNode
     if (querySchemaInfo.name.startsWith('createNode') && querySchemaInfo.graphQuery == null) {
-        const inputFields = transformFunctionInputParameters(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
         const nodeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
         let returnBlock = `ID(${nodeName})`;
         if (obj.definitions[0].selectionSet.selections[0].selectionSet != undefined) {        
@@ -833,7 +825,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
     
     // updateNode
     if (querySchemaInfo.name.startsWith('updateNode') && querySchemaInfo.graphQuery == null) {
-        const inputFields = transformFunctionInputParameters(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
         const nodeID = inputFields.graphIdValue;
         const nodeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
         let returnBlock = `ID(${nodeName})`;
@@ -881,7 +873,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         Object.assign(parameters, {[paramToId]: toID});
 
         if (obj.definitions[0].selectionSet.selections[0].arguments.length > 2) {            
-            const inputFields = transformFunctionInputParameters(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
+            const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
             const ocQuery = `MATCH (from), (to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nCREATE (from)-[${edgeName}:\`${egdgeTypeAlias}\`{${inputFields.fields}}]->(to)\nRETURN ${returnBlock}`;
             return ocQuery;
         } else {
@@ -896,7 +888,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let toID = obj.definitions[0].selectionSet.selections[0].arguments[1].value.value;
         let edgeType = querySchemaInfo.name.match(new RegExp('updateEdge' + "(.*)" + 'From'))[1];
         let egdgeTypeAlias = getTypeAlias(edgeType);
-        const inputFields = transformFunctionInputParameters(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
+        const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
         const edgeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
         let returnBlock = `ID(${edgeName})`;
         if (obj.definitions[0].selectionSet.selections[0].selectionSet != undefined) {        
@@ -940,7 +932,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let ocQuery = querySchemaInfo.graphQuery;
         
         if (ocQuery.includes('$input')) {
-            const inputFields = transformFunctionInputParameters(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+            const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
             ocQuery = ocQuery.replace('$input', inputFields.fields);
         } else {
             obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
