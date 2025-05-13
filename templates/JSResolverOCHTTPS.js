@@ -500,10 +500,14 @@ function getQueryArguments(args, querySchemaInfo) {
                 const f = filters[i];
                 let param = querySchemaInfo.pathName + '_' + f.name;
                 Object.assign(parameters, { [param]: f.value });
+                let operation = '=';
+                if (f.operator && f.operator !== 'eq') {
+                    operation = f.operator.toUpperCase();
+                }
                 if (f.name === querySchemaInfo.graphDBIdArgName) {
-                    whereClauses.push(`ID(${querySchemaInfo.pathName})=$${param}`);
+                    whereClauses.push(`ID(${querySchemaInfo.pathName}) ${operation} $${param}`);
                 } else {
-                    whereClauses.push(`${querySchemaInfo.pathName}.${f.name}=$${param}`);
+                    whereClauses.push(`${querySchemaInfo.pathName}.${f.name} ${operation} $${param}`);
                 }
             }
         } else if (arg.name.value === 'options') {
@@ -775,17 +779,19 @@ function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
     
     return finalizeGraphQuery(matchStatements, withStatements, returnString);
 }
-  
-  
+
+
 function getFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
     const filters = [];
     schemaInfo.args.forEach(arg => {
         queryArgumentFields.forEach(field => {
             if (field.name?.value === arg.name) {
                 let argValue = field.value?.value;
+                let operator = 'eq';
                 if (arg.type === 'StringScalarFilters') {
-                    // TODO discern between string comparison operators EQ,CONTAINS
-                    argValue = field.value?.fields?.find(f => f.kind === 'ObjectField' && f.value?.kind === 'StringValue')?.value?.value;
+                    let find = field.value?.fields?.find(f => f.kind === 'ObjectField' && f.value?.kind === 'StringValue');
+                    argValue = find?.value?.value;
+                    operator = find?.name?.value;
                 } else if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
                     argValue = Number(argValue);
                 }
@@ -793,7 +799,7 @@ function getFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
                 if (arg.alias) {
                     argName = arg.alias;
                 }
-                filters.push({name: argName, value: argValue})
+                filters.push({name: argName, value: argValue, operator: operator})
             }
         });
     });
