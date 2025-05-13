@@ -491,6 +491,11 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
 
 
 function getQueryArguments(args, querySchemaInfo) {
+    const operationMap = new Map();
+    operationMap.set('eq', '=');
+    operationMap.set('contains', 'CONTAINS');
+    operationMap.set('startsWith', 'STARTS WITH');
+    operationMap.set('endsWith', 'ENDS WITH');
     let queryArguments = '';
     let whereClauses = [];
     args.forEach(arg => {
@@ -501,8 +506,8 @@ function getQueryArguments(args, querySchemaInfo) {
                 let param = querySchemaInfo.pathName + '_' + f.name;
                 Object.assign(parameters, { [param]: f.value });
                 let operation = '=';
-                if (f.operator && f.operator !== 'eq') {
-                    operation = f.operator.toUpperCase();
+                if (f.operator && operationMap.has(f.operator)) {
+                    operation = operationMap.get(f.operator);
                 }
                 if (f.name === querySchemaInfo.graphDBIdArgName) {
                     whereClauses.push(`ID(${querySchemaInfo.pathName}) ${operation} $${param}`);
