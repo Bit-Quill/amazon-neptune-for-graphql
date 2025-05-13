@@ -475,18 +475,19 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
     } else {
         let queryArgs = '';
         let whereClause = '';
+        let withClause = '';
+        
         let argsAndWhereClauses = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
         if (argsAndWhereClauses?.queryArguments.length > 0) {
-            queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}`;
+            queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}}`;
         }
         if (argsAndWhereClauses?.whereClauses.length > 0) {
             whereClause = ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}`;
         }
-        matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`${queryArgs})${whereClause}`);
-
         if (querySchemaInfo.argOptionsLimit) {
-            matchStatements.push(`WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}`);
+            withClause = ` WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}`;
         }
+        matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`${queryArgs})${whereClause}${withClause}`);
     }
 
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});
