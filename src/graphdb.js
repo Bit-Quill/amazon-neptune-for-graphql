@@ -261,7 +261,6 @@ function graphDBInferenceSchema (graphbSchema, addMutations) {
     
     r += 'input StringScalarFilters {\n' +
         '\teq: String\n' +
-        '\tin: [String!]\n' +
         '\tcontains: String\n' +
         '\tendsWith: String\n' +
         '\tstartsWith: String\n' +

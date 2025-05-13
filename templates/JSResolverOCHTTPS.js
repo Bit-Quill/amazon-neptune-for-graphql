@@ -473,17 +473,20 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
         matchStatements.push(gq);
 
     } else {
-
-        let { queryArguments, where } = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
-
-        if  (queryArguments.length > 0) {
-            matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`{${queryArguments}})${where}`);
-        } else {
-            matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`) WHERE ${where.join(' AND ')}`);
+        let queryArgs = '';
+        let whereClause = '';
+        let argsAndWhereClauses = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
+        if (argsAndWhereClauses?.queryArguments.length > 0) {
+            queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}`;
         }
+        if (argsAndWhereClauses?.whereClauses.length > 0) {
+            whereClause = ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}`;
+        }
+        matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`${queryArgs})${whereClause}`);
 
-        if (querySchemaInfo.argOptionsLimit != null)
+        if (querySchemaInfo.argOptionsLimit) {
             matchStatements.push(`WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}`);
+        }
     }
 
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});
@@ -496,7 +499,7 @@ function getQueryArguments(args, querySchemaInfo) {
     operationMap.set('contains', 'CONTAINS');
     operationMap.set('startsWith', 'STARTS WITH');
     operationMap.set('endsWith', 'ENDS WITH');
-    let queryArguments = '';
+    let queryArguments = [];
     let whereClauses = [];
     args.forEach(arg => {
         if (arg.name.value === 'filter') {
@@ -515,14 +518,13 @@ function getQueryArguments(args, querySchemaInfo) {
                     whereClauses.push(`${querySchemaInfo.pathName}.${f.name} ${operation} $${param}`);
                 }
             }
-        } else if (arg.name.value === 'options') {
-            if (arg.value.kind === 'ObjectValue')
-                getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
+        } else if (arg.name.value === 'options' && arg.value.kind === 'ObjectValue') {
+            getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
         } else {
-            queryArguments = queryArguments + arg.name.value + ":'" + arg.value.value + "',";
+            queryArguments.push(`${arg.name.value}:'${arg.value.value}'`);
         }
     });
-    return { queryArguments, where: whereClauses };
+    return { queryArguments: queryArguments, whereClauses: whereClauses };
 }
 
 
