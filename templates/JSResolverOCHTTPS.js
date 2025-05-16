@@ -724,16 +724,68 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
 
 }
 
+function convertToValueNode(value) {
+    if (value === null) {
+        return { kind: 'NullValue' };
+    }
+
+    if (typeof value === 'string') {
+        return {
+            kind: 'StringValue',
+            value: value
+        };
+    }
+
+    if (typeof value === 'number') {
+        if (Number.isInteger(value)) {
+            return {
+                kind: 'IntValue',
+                value: String(value)
+            };
+        }
+        return {
+            kind: 'FloatValue',
+            value: String(value)
+        };
+    }
+
+    if (typeof value === 'boolean') {
+        return {
+            kind: 'BooleanValue',
+            value: value
+        };
+    }
+
+    if (Array.isArray(value)) {
+        return {
+            kind: 'ListValue',
+            values: value.map(item => convertToValueNode(item))
+        };
+    }
+
+    if (typeof value === 'object') {
+        return {
+            kind: 'ObjectValue',
+            fields: Object.entries(value).map(([key, val]) => ({
+                kind: 'ObjectField',
+                name: { kind: 'Name', value: key },
+                value: convertToValueNode(val)
+            }))
+        };
+    }
+
+    return { kind: 'NullValue' };
+}
 
 function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
 
     selections.forEach(selection => {
         let fieldDef = getFieldDefForType(lastType, selection.name.value);
         if (fieldDef.type.kind === 'ListType') {
-            const subType = fieldDef.type.type;
-            if (selection.arguments?.filter(arg => arg.value.kind === 'Variable').length > 0) {
-
-            }
+            const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
+            variableArgs.forEach(arg => {
+                arg.value = convertToValueNode(variables[arg.value.name.value]);
+            });
         }
         const fieldSchemaInfo = getSchemaFieldInfo(lastType, selection.name.value, lastNamePath);
 
