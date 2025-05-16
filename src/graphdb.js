@@ -184,11 +184,15 @@ function graphDBInferenceSchema (graphbSchema, addMutations) {
         r += '\t_id: ID @id\n';
         node.properties.forEach(property => {
             let propertyCase = cleanseLabel(property.name);
+            let propertyType = property.type;
+            if (propertyType === 'String') {
+                propertyType = 'StringScalarFilters';
+            }
             if (property.name !== propertyCase) {
-                r+= `\t${propertyCase}: ${property.type} @alias(property: "${property.name}")\n`;
+                r+= `\t${propertyCase}: ${propertyType} @alias(property: "${property.name}")\n`;
             }
             else {
-                r+= `\t${property.name}: ${property.type}\n`;
+                r+= `\t${property.name}: ${propertyType}\n`;
             }
         });
         r += '}\n\n';
@@ -252,6 +256,13 @@ function graphDBInferenceSchema (graphbSchema, addMutations) {
     r += `input Options {\n`;
     r += `\tlimit:Int\n`;
     r += '}\n\n';
+    
+    r += 'input StringScalarFilters {\n' +
+        '\teq: String\n' +
+        '\tcontains: String\n' +
+        '\tendsWith: String\n' +
+        '\tstartsWith: String\n' +
+        '}';
 
     // query
     r += `type Query {\n`;

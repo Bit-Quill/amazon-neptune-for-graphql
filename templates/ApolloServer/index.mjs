@@ -22,6 +22,7 @@ const resolvers = {
                 field: info.fieldName,
                 arguments: args,
                 selectionSet: info.fieldNodes[0].selectionSet,
+                variables: info.variableValues,
             };
 
             return resolveEvent(event).then((result) => {
