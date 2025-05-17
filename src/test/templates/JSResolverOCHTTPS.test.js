@@ -392,12 +392,12 @@ test('should inference query with mutation update node (Query0016)', () => {
 
     expect(result).toMatchObject({
         query: 'MATCH (updateNodeAirport_Airport)\n' +
-            'WHERE ID(updateNodeAirport_Airport) = $updateNodeAirport_Airport_whereId\n' +
-            'SET  updateNodeAirport_Airport.city = $updateNodeAirport_Airport_city\n' +
+            'WHERE ID(updateNodeAirport_Airport) = $updateNodeAirport_Airport__id\n' +
+            'SET updateNodeAirport_Airport.city = $updateNodeAirport_Airport_city\n' +
             'RETURN {city: updateNodeAirport_Airport.`city`}',
         parameters: {
             updateNodeAirport_Airport_city: 'Seattle',
-            updateNodeAirport_Airport_whereId: '22'
+            updateNodeAirport_Airport__id: '22'
         },
         language: 'opencypher',
         refactorOutput: null
