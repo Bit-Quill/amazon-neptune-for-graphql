@@ -264,7 +264,7 @@ function graphDBInferenceSchema (graphbSchema, addMutations) {
         '\tcontains: String\n' +
         '\tendsWith: String\n' +
         '\tstartsWith: String\n' +
-        '}';
+        '}\n\n';
 
     // query
     r += `type Query {\n`;
