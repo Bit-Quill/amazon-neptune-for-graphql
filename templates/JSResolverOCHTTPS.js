@@ -1230,7 +1230,7 @@ function parseQueryInput(queryObjOrStr) {
  * @param variables optional query variables
  * @returns {string}
  */
-export function resolveGraphDBQuery(queryObjOrStr, variables) {
+export function resolveGraphDBQuery(queryObjOrStr, variables = {}) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
 
     const obj = parseQueryInput(queryObjOrStr);

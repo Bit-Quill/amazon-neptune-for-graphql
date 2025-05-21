@@ -389,7 +389,7 @@ function inferGraphDatabaseDirectives(schemaModel) {
         '\tcontains: String\n' +
         '\tendsWith: String\n' +
         '\tstartsWith: String\n' +
-        '}');
+        '}\n');
 
     return injectChanges(schemaModel);
 }
