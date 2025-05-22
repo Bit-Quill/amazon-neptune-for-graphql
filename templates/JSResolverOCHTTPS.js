@@ -142,19 +142,6 @@ function getFieldDef(fieldName) {
     }
 }
 
-function getFieldDefForType(typeName, fieldName) {
-    let typeDefs = getTypeDefs(typeName);
-
-    for (const typeDef of typeDefs) {
-        const fieldDef = typeDef.fields.find(def => def.name.value === fieldName);
-
-        if (fieldDef) {
-            return fieldDef;
-        }
-    }
-}
-
-
 function getTypeAlias(typeName) {
     let alias = null;
     schemaDataModel.definitions.forEach(def => {
@@ -490,8 +477,10 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
         let queryArgs = '';
         let whereClause = '';
         let withClause = '';
-
-        let argsAndWhereClauses = getQueryArguments(obj.definitions[0].selectionSet.selections[0].arguments, querySchemaInfo);
+        
+        const selection = obj.definitions[0].selectionSet.selections[0];
+        replaceVariableArgsWithValues(selection, querySchemaInfo.variables);
+        const argsAndWhereClauses = getQueryArguments(selection.arguments, querySchemaInfo);
         if (argsAndWhereClauses?.queryArguments.length > 0) {
             queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}}`;
         }
@@ -653,7 +642,7 @@ function createQueryFieldLeafStatement(fieldSchemaInfo, lastNamePath) {
 }
 
 
-function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables = {}) {
+function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType) {
     const schemaTypeInfo = getSchemaTypeInfo(lastType, fieldSchemaInfo.name, lastNamePath);
 
     // check if the field has is a function with parameters, look for filters and options
@@ -777,16 +766,17 @@ function convertToValueNode(value) {
     return { kind: 'NullValue' };
 }
 
+function replaceVariableArgsWithValues(selection, variables) {
+    const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
+    variableArgs.forEach(arg => {
+        arg.value = convertToValueNode(variables[arg.value.name.value]);
+    });
+}
+
 function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
 
     selections.forEach(selection => {
-        let fieldDef = getFieldDefForType(lastType, selection.name.value);
-        if (fieldDef.type.kind === 'ListType') {
-            const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
-            variableArgs.forEach(arg => {
-                arg.value = convertToValueNode(variables[arg.value.name.value]);
-            });
-        }
+        replaceVariableArgsWithValues(selection, variables);
         const fieldSchemaInfo = getSchemaFieldInfo(lastType, selection.name.value, lastNamePath);
 
         // check if is schema type
@@ -796,7 +786,7 @@ function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
             return
         }
 
-        createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables)
+        createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType)
     });
 };
 

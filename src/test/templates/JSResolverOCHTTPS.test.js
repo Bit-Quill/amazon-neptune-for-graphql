@@ -604,3 +604,65 @@ test('should resolve query with nested edge filter that uses string comparison o
         refactorOutput: null
     });
 });
+
+test('should resolve query with nested edge filter and variables', () => {
+    const query = 'query GetNodeAirports($filter: AirportInput, $options: Options, $nestedFilter: AirportInput, $nestedOptions: Options) {\n' +
+        '  getNodeAirports(filter: $filter, options: $options) {\n' +
+        '    _id\n' +
+        '    city\n' +
+        '    code\n' +
+        '    airportRoutesOut(filter: $nestedFilter, options: $nestedOptions) {\n' +
+        '      _id\n' +
+        '      city\n' +
+        '      code\n' +
+        '    }\n' +
+        '  }\n' +
+        '}';
+    const variables = {
+        "filter": {
+            "country": {
+                "eq": "CA"
+            }
+        },
+        "options": {
+            "limit": 6
+        },
+        "nestedFilter": {
+            "country": {
+                "startsWith": "M"
+            }
+        },
+        "nestedOptions": {
+            "limit": 2
+        }
+    }
+    const result = resolveGraphDBQuery(query, variables);
+
+    expect(result).toMatchObject({
+        query: 'MATCH (getNodeAirports_Airport:`airport`) ' +
+            'WHERE getNodeAirports_Airport.country = $getNodeAirports_Airport_country ' +
+            'WITH getNodeAirports_Airport LIMIT 6\n' +
+            'OPTIONAL MATCH (getNodeAirports_Airport)-[getNodeAirports_Airport_airportRoutesOut_route:route]->(getNodeAirports_Airport_airportRoutesOut:`airport`) ' +
+            'WHERE getNodeAirports_Airport_airportRoutesOut.country STARTS WITH $getNodeAirports_Airport_airportRoutesOut_country\n' +
+            'WITH getNodeAirports_Airport, ' +
+            'CASE WHEN getNodeAirports_Airport_airportRoutesOut IS NULL THEN [] ' +
+            'ELSE COLLECT({' +
+            '_id:ID(getNodeAirports_Airport_airportRoutesOut), ' +
+            'city: getNodeAirports_Airport_airportRoutesOut.`city`, ' +
+            'code: getNodeAirports_Airport_airportRoutesOut.`code`' +
+            '})[..2] ' +
+            'END AS getNodeAirports_Airport_airportRoutesOut_collect\n' +
+            'RETURN collect({' +
+            '_id:ID(getNodeAirports_Airport), ' +
+            'city: getNodeAirports_Airport.`city`, ' +
+            'code: getNodeAirports_Airport.`code`, ' +
+            'airportRoutesOut: getNodeAirports_Airport_airportRoutesOut_collect' +
+            '})[..6]',
+        parameters: {
+            getNodeAirports_Airport_country: "CA",
+            getNodeAirports_Airport_airportRoutesOut_country: "M"
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
