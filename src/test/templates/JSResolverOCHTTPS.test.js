@@ -375,7 +375,7 @@ test('should inference query with mutation create node (Query0015)', () => {
     const result = resolveGraphDBQuery('mutation MyMutation {\n createNodeAirport(input: {code: \"NAX\", city: \"Reggio Emilia\"}) {\n code\n }\n }');
 
     expect(result).toMatchObject({
-        query: 'CREATE (createNodeAirport_Airport:`airport` {city: $createNodeAirport_Airport_city, code: $createNodeAirport_Airport_code})\n' +
+        query: 'CREATE (createNodeAirport_Airport:`airport` {code: $createNodeAirport_Airport_code, city: $createNodeAirport_Airport_city})\n' +
             'RETURN {code: createNodeAirport_Airport.`code`}',
         parameters: {
             createNodeAirport_Airport_code: 'NAX',
@@ -514,11 +514,11 @@ test('should resolve query with filter that uses various string comparison opera
 
     expect(result).toMatchObject({
         query: 'MATCH (getNodeAirports_Airport:`airport`) ' +
-            'WHERE getNodeAirports_Airport.city ENDS WITH $getNodeAirports_Airport_city ' +
+            'WHERE getNodeAirports_Airport.country = $getNodeAirports_Airport_country ' +
             'AND getNodeAirports_Airport.code STARTS WITH $getNodeAirports_Airport_code ' +
-            'AND getNodeAirports_Airport.country = $getNodeAirports_Airport_country ' +
-            'AND getNodeAirports_Airport.runways = $getNodeAirports_Airport_runways ' +
+            'AND getNodeAirports_Airport.city ENDS WITH $getNodeAirports_Airport_city ' +
             'AND getNodeAirports_Airport.desc CONTAINS $getNodeAirports_Airport_desc ' +
+            'AND getNodeAirports_Airport.runways = $getNodeAirports_Airport_runways ' +
             'WITH getNodeAirports_Airport LIMIT 5\n' +
             'RETURN collect({' +
             '_id:ID(getNodeAirports_Airport), ' +
@@ -577,8 +577,8 @@ test('should resolve query with nested edge filter that uses string comparison o
             'WHERE getNodeAirports_Airport.country = $getNodeAirports_Airport_country ' +
             'WITH getNodeAirports_Airport LIMIT 5\n' +
             'OPTIONAL MATCH (getNodeAirports_Airport)-[getNodeAirports_Airport_airportRoutesOut_route:route]->(getNodeAirports_Airport_airportRoutesOut:`airport`) ' +
-            'WHERE getNodeAirports_Airport_airportRoutesOut.code CONTAINS $getNodeAirports_Airport_airportRoutesOut_code ' +
-            'AND getNodeAirports_Airport_airportRoutesOut.country STARTS WITH $getNodeAirports_Airport_airportRoutesOut_country\n' +
+            'WHERE getNodeAirports_Airport_airportRoutesOut.country STARTS WITH $getNodeAirports_Airport_airportRoutesOut_country ' +
+            'AND getNodeAirports_Airport_airportRoutesOut.code CONTAINS $getNodeAirports_Airport_airportRoutesOut_code\n' +
             'WITH getNodeAirports_Airport, ' +
             'CASE WHEN getNodeAirports_Airport_airportRoutesOut IS NULL THEN [] ' +
             'ELSE COLLECT({' +

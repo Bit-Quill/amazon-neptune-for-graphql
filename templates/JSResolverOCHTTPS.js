@@ -142,6 +142,7 @@ function getFieldDef(fieldName) {
     }
 }
 
+
 function getTypeAlias(typeName) {
     let alias = null;
     schemaDataModel.definitions.forEach(def => {
@@ -209,7 +210,7 @@ function getSchemaInputTypeArgs (inputType, schemaInfo) {
 }
 
 
-function getSchemaQueryInfo(name, variables) {
+function getSchemaQueryInfo(name) {
     const r = {
         type: '', // rename functionType
         name: name,
@@ -223,7 +224,6 @@ function getSchemaQueryInfo(name, variables) {
         argOptionsLimit: null,
         argOptionsOffset: null,
         argOptionsOrderBy: null,
-        variables: variables
     };
 
     schemaDataModel.definitions.forEach(def => {
@@ -474,22 +474,12 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
         matchStatements.push(gq);
 
     } else {
-        let queryArgs = '';
-        let whereClause = '';
-        let withClause = '';
-        
         const selection = obj.definitions[0].selectionSet.selections[0];
         replaceVariableArgsWithValues(selection, querySchemaInfo.variables);
         const argsAndWhereClauses = getQueryArguments(selection.arguments, querySchemaInfo);
-        if (argsAndWhereClauses?.queryArguments.length > 0) {
-            queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}}`;
-        }
-        if (argsAndWhereClauses?.whereClauses.length > 0) {
-            whereClause = ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}`;
-        }
-        if (querySchemaInfo.argOptionsLimit) {
-            withClause = ` WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}`;
-        }
+        const queryArgs = argsAndWhereClauses?.queryArguments.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
+        const whereClause = argsAndWhereClauses?.whereClauses.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
+        const withClause = querySchemaInfo.argOptionsLimit ? ` WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}` : '';
         matchStatements.push(`MATCH (${querySchemaInfo.pathName}:\`${querySchemaInfo.returnTypeAlias}\`${queryArgs})${whereClause}${withClause}`);
     }
 
@@ -503,23 +493,25 @@ function getQueryArguments(args, querySchemaInfo) {
     operationMap.set('contains', 'CONTAINS');
     operationMap.set('startsWith', 'STARTS WITH');
     operationMap.set('endsWith', 'ENDS WITH');
-    let queryArguments = [];
-    let whereClauses = [];
+    
+    const queryArguments = [];
+    const whereClauses = [];
     args.forEach(arg => {
         if (arg.name.value === 'filter') {
-            const filters = getFiltersFromQueryArgumentFields(arg.value.fields, querySchemaInfo);
+            const filters = extractFiltersFromQueryArgumentFields(arg.value.fields, querySchemaInfo);
+            // create a WHERE clause for each filter
             for (let i = 0; i < filters.length; i++) {
-                const f = filters[i];
-                let param = querySchemaInfo.pathName + '_' + f.name;
-                Object.assign(parameters, { [param]: f.value });
+                const filter = filters[i];
+                const paramName = querySchemaInfo.pathName + '_' + filter.name;
+                Object.assign(parameters, { [paramName]: filter.value });
                 let operation = '=';
-                if (f.operator && operationMap.has(f.operator)) {
-                    operation = operationMap.get(f.operator);
+                if (filter.operator && operationMap.has(filter.operator)) {
+                    operation = operationMap.get(filter.operator);
                 }
-                if (f.name === querySchemaInfo.graphDBIdArgName) {
-                    whereClauses.push(`ID(${querySchemaInfo.pathName}) ${operation} $${param}`);
+                if (filter.name === querySchemaInfo.graphDBIdArgName) {
+                    whereClauses.push(`ID(${querySchemaInfo.pathName}) ${operation} $${paramName}`);
                 } else {
-                    whereClauses.push(`${querySchemaInfo.pathName}.${f.name} ${operation} $${param}`);
+                    whereClauses.push(`${querySchemaInfo.pathName}.${filter.name} ${operation} $${paramName}`);
                 }
             }
         } else if (arg.name.value === 'options' && arg.value.kind === 'ObjectValue') {
@@ -652,16 +644,10 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
                 getOptionsInSchemaInfo(arg.value.fields, fieldSchemaInfo);
         });
     }
-
-    let queryArgs = '';
-    let whereClause = '';
-    let argsAndWhereClauses = getQueryArguments(selection.arguments, fieldSchemaInfo);
-    if (argsAndWhereClauses?.queryArguments.length > 0) {
-        queryArgs = `{${argsAndWhereClauses.queryArguments.join(',')}}`;
-    }
-    if (argsAndWhereClauses?.whereClauses.length > 0) {
-        whereClause = ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}`;
-    }
+    
+    const argsAndWhereClauses = getQueryArguments(selection.arguments, fieldSchemaInfo);
+    const queryArgs = argsAndWhereClauses?.queryArguments.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
+    const whereClause = argsAndWhereClauses?.whereClauses.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
 
     if (schemaTypeInfo.isRelationship) {
         if (schemaTypeInfo.relationship.direction === 'IN') {
@@ -673,6 +659,8 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
     const thisWithId = withStatements.push({carryOver: schemaTypeInfo.pathName, inLevel: '', content: ''}) - 1;
 
     if (schemaTypeInfo.isArray) {
+        // if the nested selection (optional match) did not producer results, return empty array
+        // otherwise collect the results in an array
         withStatements[thisWithId].content += `CASE WHEN ${schemaTypeInfo.pathName} IS NULL THEN [] ELSE COLLECT(`;
     }
 
@@ -713,65 +701,7 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
 
 }
 
-function convertToValueNode(value) {
-    if (value === null) {
-        return { kind: 'NullValue' };
-    }
 
-    if (typeof value === 'string') {
-        return {
-            kind: 'StringValue',
-            value: value
-        };
-    }
-
-    if (typeof value === 'number') {
-        if (Number.isInteger(value)) {
-            return {
-                kind: 'IntValue',
-                value: String(value)
-            };
-        }
-        return {
-            kind: 'FloatValue',
-            value: String(value)
-        };
-    }
-
-    if (typeof value === 'boolean') {
-        return {
-            kind: 'BooleanValue',
-            value: value
-        };
-    }
-
-    if (Array.isArray(value)) {
-        return {
-            kind: 'ListValue',
-            values: value.map(item => convertToValueNode(item))
-        };
-    }
-
-    if (typeof value === 'object') {
-        return {
-            kind: 'ObjectValue',
-            fields: Object.entries(value).map(([key, val]) => ({
-                kind: 'ObjectField',
-                name: { kind: 'Name', value: key },
-                value: convertToValueNode(val)
-            }))
-        };
-    }
-
-    return { kind: 'NullValue' };
-}
-
-function replaceVariableArgsWithValues(selection, variables) {
-    const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
-    variableArgs.forEach(arg => {
-        arg.value = convertToValueNode(variables[arg.value.name.value]);
-    });
-}
 
 function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
 
@@ -854,51 +784,118 @@ function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
     return finalizeGraphQuery(matchStatements, withStatements, returnString);
 }
 
+/**
+ * Converts JavaScript values to GraphQL AST value nodes.
+ * Handles primitive types, arrays, and objects by converting them into
+ * their corresponding GraphQL AST representation.
+ *
+ * @param {*} value - The value to convert to a GraphQL AST node
+ * @returns {Object} A GraphQL AST value node
+ *
+ * @example
+ * // Convert a string
+ * convertToValueNode('hello')
+ * // Returns: { kind: 'StringValue', value: 'hello' }
+ *
+ * @example
+ * // Convert a number
+ * convertToValueNode(42)
+ * // Returns: { kind: 'IntValue', value: '42' }
+ */
+function convertToValueNode(value) {
+    if (!value) {
+        return { kind: 'NullValue' };
+    }
 
-function getPropertiesFromQueryArgumentFields(fields, schemaInfo) {
-    const properties = [];
-    schemaInfo.args.forEach(arg => {
-        fields.forEach(field => {
-            if (field.name.value === arg.name) {
-                let name = arg.name;
-                let value = field.value?.value;
-                if (field.value.kind === 'IntValue' || field.value.kind === 'FloatValue') {
-                    value = Number(value);
-                }
-                if (arg.alias) {
-                    name = arg.alias;
-                }
-                properties.push({name: name, value: value});
-            }
-        });
-    });
-    return properties;
+    if (typeof value === 'string') {
+        return {
+            kind: 'StringValue',
+            value: value
+        };
+    }
+
+    if (typeof value === 'number') {
+        if (Number.isInteger(value)) {
+            return {
+                kind: 'IntValue',
+                value: String(value)
+            };
+        }
+        return {
+            kind: 'FloatValue',
+            value: String(value)
+        };
+    }
+
+    if (typeof value === 'boolean') {
+        return {
+            kind: 'BooleanValue',
+            value: value
+        };
+    }
+
+    if (Array.isArray(value)) {
+        return {
+            kind: 'ListValue',
+            values: value.map(item => convertToValueNode(item))
+        };
+    }
+
+    if (typeof value === 'object') {
+        return {
+            kind: 'ObjectValue',
+            fields: Object.entries(value).map(([key, val]) => ({
+                kind: 'ObjectField',
+                name: { kind: 'Name', value: key },
+                value: convertToValueNode(val)
+            }))
+        };
+    }
+
+    return { kind: 'NullValue' };
 }
 
-function getFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
-    const filters = [];
-    schemaInfo.args.forEach(arg => {
-        queryArgumentFields.forEach(field => {
-            if (field.name?.value === arg.name) {
-                let argValue = field.value?.value;
-                let operator = 'eq';
-                if (arg.type === 'StringScalarFilters') {
-                    let find = field.value?.fields?.find(f => f.kind === 'ObjectField' && f.value?.kind === 'StringValue');
-                    argValue = find?.value?.value;
-                    operator = find?.name?.value;
-                } else if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
-                    argValue = Number(argValue);
-                }
-                let argName = arg.name;
-                if (arg.alias) {
-                    argName = arg.alias;
-                }
-                filters.push({name: argName, value: argValue, operator: operator})
-            }
-        });
+function replaceVariableArgsWithValues(selection, variables) {
+    const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
+    variableArgs.forEach(arg => {
+        arg.value = convertToValueNode(variables[arg.value.name.value]);
     });
+}
 
-    return filters;
+
+function extractCypherFieldsFromArgumentFields(queryArgumentFields, schemaInfo) {
+    return queryArgumentFields.reduce((properties, field) => {
+        const matchingArg = schemaInfo.args?.find(arg => field.name?.value === arg.name)
+        if (matchingArg) {
+            let value = field.value?.value;
+            if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
+                value = Number(value);
+            }
+            properties.push({name: matchingArg.alias ?? matchingArg.name, value: value});
+        }
+        return properties;
+    }, []);
+}
+
+function extractFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
+    return queryArgumentFields.reduce((filters, field) => {
+        const matchingArg = schemaInfo.args?.find(arg => field.name?.value === arg.name)
+        if (matchingArg) {
+            let argValue = field.value?.value;
+            let operator = 'eq';
+            if (matchingArg.type === 'StringScalarFilters') {
+                const stringScalarFilterValue = field.value?.fields?.find(f => f.kind === 'ObjectField' && f.value?.kind === 'StringValue');
+                if (stringScalarFilterValue) {
+                    argValue = stringScalarFilterValue.value.value;
+                    operator = stringScalarFilterValue.name.value;
+                }
+            } else if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
+                argValue = Number(argValue);
+            }
+            filters.push({name: matchingArg.alias ?? matchingArg.name, value: argValue, operator: operator})
+        }
+        return filters;
+    }, []);
 }
 
 
@@ -913,7 +910,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
 
     // createNode
     if (querySchemaInfo.name.startsWith('createNode') && !querySchemaInfo.graphQuery) {
-        const queryProperties = getPropertiesFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        const queryProperties = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
         const formattedProperties = queryProperties.map(arg => {
             const param = querySchemaInfo.pathName + '_' + arg.name;
             Object.assign(parameters, { [param]: arg.value });
@@ -930,7 +927,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
 
     // updateNode
     if (querySchemaInfo.name.startsWith('updateNode') && !querySchemaInfo.graphQuery) {
-        const queryProperties = getPropertiesFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        const queryProperties = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
 
         const idProperty = queryProperties.find(arg=>arg.name === querySchemaInfo.graphDBIdArgName);
         const nodeID = idProperty.value;
@@ -981,7 +978,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         Object.assign(parameters, {[paramToId]: toID});
 
         if (obj.definitions[0].selectionSet.selections[0].arguments.length > 2) {
-            const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
+            const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
             const ocQuery = `MATCH (from), (to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nCREATE (from)-[${edgeName}:\`${egdgeTypeAlias}\`{${inputFields.fields}}]->(to)\nRETURN ${returnBlock}`;
             return ocQuery;
         } else {
@@ -996,7 +993,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let toID = obj.definitions[0].selectionSet.selections[0].arguments[1].value.value;
         let edgeType = querySchemaInfo.name.match(new RegExp('updateEdge' + "(.*)" + 'From'))[1];
         let egdgeTypeAlias = getTypeAlias(edgeType);
-        const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
+        const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
         const edgeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
         let returnBlock = `ID(${edgeName})`;
         if (obj.definitions[0].selectionSet.selections[0].selectionSet != undefined) {
@@ -1040,7 +1037,7 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let ocQuery = querySchemaInfo.graphQuery;
 
         if (ocQuery.includes('$input')) {
-            const inputFields = getFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+            const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
             ocQuery = ocQuery.replace('$input', inputFields.fields);
         } else {
             obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
@@ -1225,7 +1222,8 @@ export function resolveGraphDBQuery(queryObjOrStr, variables = {}) {
 
     const obj = parseQueryInput(queryObjOrStr);
 
-    const querySchemaInfo = getSchemaQueryInfo(obj.definitions[0].selectionSet.selections[0].name.value, variables);
+    const querySchemaInfo = getSchemaQueryInfo(obj.definitions[0].selectionSet.selections[0].name.value);
+    querySchemaInfo.variables = variables;
 
     if (querySchemaInfo.graphQuery != null) {
         if (querySchemaInfo.graphQuery.startsWith('g.V')) {
