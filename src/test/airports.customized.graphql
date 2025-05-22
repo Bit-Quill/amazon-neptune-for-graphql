@@ -131,6 +131,8 @@ getCountriesCount: Int @graphQuery(statement: "g.V().hasLabel('country').count()
 type Mutation {
 createNodeAirport(input: AirportInput!): Airport
 updateNodeAirport(input: AirportInput!): Airport
+connectNodeCountryToNodeAirportEdgeContains(from_id: ID!, to_id: ID!): Contains
+deleteEdgeContainsFromCountryToAirport(from_id: ID!, to_id: ID!): Boolean
 }
 
 schema {

@@ -404,6 +404,50 @@ test('should inference query with mutation update node (Query0016)', () => {
     });
 });
 
+test('should resolve mutation to connect nodes', () => {
+    const query = 'mutation ConnectCountryToAirport {\n' +
+        '  connectNodeCountryToNodeAirportEdgeContains(from_id: \"ee71c547-ea32-4573-88bc-6ecb31942a1e\", to_id: \"99cb3321-9cda-41b6-b760-e88ead3e1ea1\") {\n' +
+        '    _id\n' +
+        '  }\n' +
+        '}';
+    const result = resolveGraphDBQuery(query);
+
+    expect(result).toMatchObject({
+        query: 'MATCH (from), (to)\n' +
+            'WHERE ID(from) = $connectNodeCountryToNodeAirportEdgeContains_Contains_whereFromId ' +
+            'AND ID(to) = $connectNodeCountryToNodeAirportEdgeContains_Contains_whereToId\n' +
+            'CREATE (from)-[connectNodeCountryToNodeAirportEdgeContains_Contains:`contains`]->(to)\n' +
+            'RETURN {_id:ID(connectNodeCountryToNodeAirportEdgeContains_Contains)}',
+        parameters: {
+            connectNodeCountryToNodeAirportEdgeContains_Contains_whereFromId: 'ee71c547-ea32-4573-88bc-6ecb31942a1e',
+            connectNodeCountryToNodeAirportEdgeContains_Contains_whereToId: '99cb3321-9cda-41b6-b760-e88ead3e1ea1'
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
+
+test('should resolve mutation to delete connection between nodes', () => {
+    const query = 'mutation DeleteEdgeContainsFromCountryToAirport {\n' +
+        '  deleteEdgeContainsFromCountryToAirport(from_id: \"ee71c547-ea32-4573-88bc-6ecb31942a1e\", to_id: \"99cb3321-9cda-41b6-b760-e88ead3e1ea1\")\n' +
+        '}';
+    const result = resolveGraphDBQuery(query);
+
+    expect(result).toMatchObject({
+        query: 'MATCH (from)-[deleteEdgeContainsFromCountryToAirport_Boolean]->(to)\n' +
+            'WHERE ID(from) = $deleteEdgeContainsFromCountryToAirport_Boolean_whereFromId ' +
+            'AND ID(to) = $deleteEdgeContainsFromCountryToAirport_Boolean_whereToId\n' +
+            'DELETE deleteEdgeContainsFromCountryToAirport_Boolean\n' +
+            'RETURN true',
+        parameters: {
+            deleteEdgeContainsFromCountryToAirport_Boolean_whereFromId: 'ee71c547-ea32-4573-88bc-6ecb31942a1e',
+            deleteEdgeContainsFromCountryToAirport_Boolean_whereToId: '99cb3321-9cda-41b6-b760-e88ead3e1ea1'
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
+
 // Query0017
 test('should inference query using _id as filter (Query0017)', () => {
     const result = resolveGraphDBQuery('query MyQuery {\n getNodeAirport(filter: {_id: \"22\"}) {\n city\n }\n }');

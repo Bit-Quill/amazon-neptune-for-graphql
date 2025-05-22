@@ -1003,15 +1003,9 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let paramToId  = edgeName + '_' + 'whereToId';
         Object.assign(parameters, {[paramFromId]: fromID});
         Object.assign(parameters, {[paramToId]: toID});
-
-        if (obj.definitions[0].selectionSet.selections[0].arguments.length > 2) {
-            const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
-            const ocQuery = `MATCH (from), (to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nCREATE (from)-[${edgeName}:\`${egdgeTypeAlias}\`{${inputFields.fields}}]->(to)\nRETURN ${returnBlock}`;
-            return ocQuery;
-        } else {
-            const ocQuery = `MATCH (from), (to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nCREATE (from)-[${edgeName}:\`${egdgeTypeAlias}\`]->(to)\nRETURN ${returnBlock}`;
-            return ocQuery;
-        }
+        
+        const ocQuery = `MATCH (from), (to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nCREATE (from)-[${edgeName}:\`${egdgeTypeAlias}\`]->(to)\nRETURN ${returnBlock}`;
+        return ocQuery;
     }
 
     // updateEdge
