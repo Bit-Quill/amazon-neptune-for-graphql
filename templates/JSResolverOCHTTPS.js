@@ -476,7 +476,7 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
     } else {
         const selection = obj.definitions[0].selectionSet.selections[0];
         replaceVariableArgsWithValues(selection, querySchemaInfo.variables);
-        const argsAndWhereClauses = getQueryArguments(selection.arguments, querySchemaInfo);
+        const argsAndWhereClauses = extractQueryArgsAndWhereClauses(selection.arguments, querySchemaInfo);
         const queryArgs = argsAndWhereClauses?.queryArguments.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
         const whereClause = argsAndWhereClauses?.whereClauses.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
         const withClause = querySchemaInfo.argOptionsLimit ? ` WITH ${querySchemaInfo.pathName} LIMIT ${querySchemaInfo.argOptionsLimit}` : '';
@@ -487,7 +487,15 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
 }
 
 
-function getQueryArguments(args, querySchemaInfo) {
+/**
+ * Extracts cypher query arguments and where clauses from given graphQL selection arguments and schema information.
+ * Will also set querySchemaInfo.argOptionsLimit if the selection arguments contain a query limit.
+ * 
+ * @param selectionArguments array of graphQL selection arguments
+ * @param querySchemaInfo schema information for the query
+ * @returns {{queryArguments: *[], whereClauses: *[]}}
+ */
+function extractQueryArgsAndWhereClauses(selectionArguments, querySchemaInfo) {
     const operationMap = new Map();
     operationMap.set('eq', '=');
     operationMap.set('contains', 'CONTAINS');
@@ -496,12 +504,11 @@ function getQueryArguments(args, querySchemaInfo) {
     
     const queryArguments = [];
     const whereClauses = [];
-    args.forEach(arg => {
-        if (arg.name.value === 'filter') {
-            const filters = extractFiltersFromQueryArgumentFields(arg.value.fields, querySchemaInfo);
+    selectionArguments.forEach(selectionArgument => {
+        if (selectionArgument.name?.value === 'filter') {
+            const filters = extractFiltersFromQueryArgumentFields(selectionArgument.value.fields, querySchemaInfo);
             // create a WHERE clause for each filter
-            for (let i = 0; i < filters.length; i++) {
-                const filter = filters[i];
+            for (const filter of filters) {
                 const paramName = querySchemaInfo.pathName + '_' + filter.name;
                 Object.assign(parameters, { [paramName]: filter.value });
                 let operation = '=';
@@ -514,10 +521,11 @@ function getQueryArguments(args, querySchemaInfo) {
                     whereClauses.push(`${querySchemaInfo.pathName}.${filter.name} ${operation} $${paramName}`);
                 }
             }
-        } else if (arg.name.value === 'options' && arg.value.kind === 'ObjectValue') {
-            getOptionsInSchemaInfo(arg.value.fields, querySchemaInfo);
-        } else {
-            queryArguments.push(`${arg.name.value}:'${arg.value.value}'`);
+        } else if (selectionArgument.name?.value === 'options' && selectionArgument.value?.kind === 'ObjectValue') {
+            // TODO change to set limit value on the returned object instead of mutating the querySchemaInfo
+            getOptionsInSchemaInfo(selectionArgument.value.fields, querySchemaInfo);
+        } else if (selectionArgument.name?.value && selectionArgument.value?.value) {
+            queryArguments.push(`${selectionArgument.name.value}:'${selectionArgument.value.value}'`);
         }
     });
     return { queryArguments: queryArguments, whereClauses: whereClauses };
@@ -645,9 +653,9 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
         });
     }
     
-    const argsAndWhereClauses = getQueryArguments(selection.arguments, fieldSchemaInfo);
-    const queryArgs = argsAndWhereClauses?.queryArguments.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
-    const whereClause = argsAndWhereClauses?.whereClauses.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
+    const argsAndWhereClauses = extractQueryArgsAndWhereClauses(selection.arguments, fieldSchemaInfo);
+    const queryArgs = argsAndWhereClauses.queryArguments?.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
+    const whereClause = argsAndWhereClauses.whereClauses?.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
 
     if (schemaTypeInfo.isRelationship) {
         if (schemaTypeInfo.relationship.direction === 'IN') {
@@ -659,7 +667,7 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
     const thisWithId = withStatements.push({carryOver: schemaTypeInfo.pathName, inLevel: '', content: ''}) - 1;
 
     if (schemaTypeInfo.isArray) {
-        // if the nested selection (optional match) did not producer results, return empty array
+        // if the nested selection (optional match) did not produce results, return empty array
         // otherwise collect the results in an array
         withStatements[thisWithId].content += `CASE WHEN ${schemaTypeInfo.pathName} IS NULL THEN [] ELSE COLLECT(`;
     }
@@ -706,6 +714,7 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
 function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
 
     selections.forEach(selection => {
+        // replace any selection references to variables with the variable values
         replaceVariableArgsWithValues(selection, variables);
         const fieldSchemaInfo = getSchemaFieldInfo(lastType, selection.name.value, lastNamePath);
 
@@ -855,28 +864,47 @@ function convertToValueNode(value) {
     return { kind: 'NullValue' };
 }
 
+/**
+ * Replaces any variable references in the selection with the actual value from the variables object.
+ * @param selection the graphQL selection to replace variable references in
+ * @param variables the variables object
+ */
 function replaceVariableArgsWithValues(selection, variables) {
-    const variableArgs = selection.arguments?.filter(arg => arg.value.kind === 'Variable');
+    const variableArgs = selection.arguments?.filter(arg => arg.value?.kind === 'Variable' 
+        && arg.value?.name?.value && variables.hasOwnProperty(arg.value.name.value));
     variableArgs.forEach(arg => {
+        // replace variable reference with actual value
         arg.value = convertToValueNode(variables[arg.value.name.value]);
     });
 }
 
 
+/**
+ * Extracts an array of cypher field name and value from the graphQL query argument fields.
+ * @param queryArgumentFields the graphQL query argument fields
+ * @param schemaInfo the schema info for the query
+ * @returns {object[]}
+ */
 function extractCypherFieldsFromArgumentFields(queryArgumentFields, schemaInfo) {
-    return queryArgumentFields.reduce((properties, field) => {
+    return queryArgumentFields.reduce((cypherFields, field) => {
         const matchingArg = schemaInfo.args?.find(arg => field.name?.value === arg.name)
         if (matchingArg) {
             let value = field.value?.value;
             if (field.value?.kind === 'IntValue' || field.value?.kind === 'FloatValue') {
                 value = Number(value);
             }
-            properties.push({name: matchingArg.alias ?? matchingArg.name, value: value});
+            cypherFields.push({name: matchingArg.alias ?? matchingArg.name, value: value});
         }
-        return properties;
+        return cypherFields;
     }, []);
 }
 
+/**
+ * Extracts an array of cypher filter name, value, operator from the graphQL query argument fields.
+ * @param queryArgumentFields the graphQL query argument fields
+ * @param schemaInfo the schema info for the query
+ * @returns {object[]}
+ */
 function extractFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) {
     return queryArgumentFields.reduce((filters, field) => {
         const matchingArg = schemaInfo.args?.find(arg => field.name?.value === arg.name)
@@ -910,8 +938,8 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
 
     // createNode
     if (querySchemaInfo.name.startsWith('createNode') && !querySchemaInfo.graphQuery) {
-        const queryProperties = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
-        const formattedProperties = queryProperties.map(arg => {
+        const queryFields = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        const formattedQueryFields = queryFields.map(arg => {
             const param = querySchemaInfo.pathName + '_' + arg.name;
             Object.assign(parameters, { [param]: arg.value });
             return `${arg.name}: $${param}`;
@@ -922,35 +950,34 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         if (obj.definitions[0].selectionSet.selections[0].selectionSet) {
             returnBlock = returnStringOnly(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo);
         }
-        return `CREATE (${nodeName}:\`${querySchemaInfo.returnTypeAlias}\` {${formattedProperties}})\nRETURN ${returnBlock}`;
+        return `CREATE (${nodeName}:\`${querySchemaInfo.returnTypeAlias}\` {${formattedQueryFields}})\nRETURN ${returnBlock}`;
     }
 
     // updateNode
     if (querySchemaInfo.name.startsWith('updateNode') && !querySchemaInfo.graphQuery) {
-        const queryProperties = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
-
-        const idProperty = queryProperties.find(arg=>arg.name === querySchemaInfo.graphDBIdArgName);
-        const nodeID = idProperty.value;
+        const queryFields = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+        
+        const idField = queryFields.find(arg => arg.name === querySchemaInfo.graphDBIdArgName);
+        const nodeID = idField.value;
         const nodeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
-        const idParam  = `${nodeName}_${idProperty.name}`;
+        const idParam  = `${nodeName}_${idField.name}`;
         Object.assign(parameters, {[idParam]: nodeID});
         
         let returnBlock = `ID(${nodeName})`;
         if (obj.definitions[0].selectionSet.selections[0].selectionSet) {
             returnBlock = returnStringOnly(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo);
         }
-        
         // :( SET += is not working, so let's work around it.
         //let ocQuery = `MATCH (${nodeName}) WHERE ID(${nodeName}) = '${nodeID}' SET ${nodeName} += {${inputFields}} RETURN ${returnBlock}`;
         // workaround:
-        let formattedProperties = queryProperties.filter(arg => {
+        const formattedFields = queryFields.filter(arg => {
            return arg.name !== querySchemaInfo.graphDBIdArgName;
         }).map(arg => {
             const param = querySchemaInfo.pathName + '_' + arg.name;
             Object.assign(parameters, { [param]: arg.value });
             return `${nodeName}.${arg.name} = $${param}`;
         }).join(', ');
-        return `MATCH (${nodeName})\nWHERE ID(${nodeName}) = $${idParam}\nSET ${formattedProperties}\nRETURN ${returnBlock}`;
+        return `MATCH (${nodeName})\nWHERE ID(${nodeName}) = $${idParam}\nSET ${formattedFields}\nRETURN ${returnBlock}`;
     }
 
     // deleteNode
