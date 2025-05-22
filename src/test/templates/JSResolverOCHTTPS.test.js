@@ -539,3 +539,68 @@ test('should resolve query with filter that uses various string comparison opera
         refactorOutput: null
     });
 });
+
+test('should resolve query with nested edge filter that uses string comparison operator', () => {
+    const query = 'query GetNodeAirports {\n' +
+        '  getNodeAirports(filter:  {\n' +
+        '     country:  {\n' +
+        '        eq: "CA"\n' +
+        '     }\n' +
+        '  }, options:  {\n' +
+        '     limit: 5\n' +
+        '  }) {\n' +
+        '    _id\n' +
+        '    code\n' +
+        '    city\n' +
+        '    country\n' +
+        '    airportRoutesOut(filter: {\n' +
+        '       country:  {\n' +
+        '          startsWith: "M"\n' +
+        '       },\n' +
+        '       code:  {\n' +
+        '          contains: "M"\n' +
+        '       }\n' +
+        '    }, options:  {\n' +
+        '       limit: 3\n' +
+        '    }) {\n' +
+        '      _id\n' +
+        '      code\n' +
+        '      city\n' +
+        '      country\n' +
+        '    }\n' +
+        '  }\n' +
+        '}\n';
+    const result = resolveGraphDBQuery(query);
+
+    expect(result).toMatchObject({
+        query: 'MATCH (getNodeAirports_Airport:`airport`) ' +
+            'WHERE getNodeAirports_Airport.country = $getNodeAirports_Airport_country ' +
+            'WITH getNodeAirports_Airport LIMIT 5\n' +
+            'OPTIONAL MATCH (getNodeAirports_Airport)-[getNodeAirports_Airport_airportRoutesOut_route:route]->(getNodeAirports_Airport_airportRoutesOut:`airport`) ' +
+            'WHERE getNodeAirports_Airport_airportRoutesOut.code CONTAINS $getNodeAirports_Airport_airportRoutesOut_code ' +
+            'AND getNodeAirports_Airport_airportRoutesOut.country STARTS WITH $getNodeAirports_Airport_airportRoutesOut_country\n' +
+            'WITH getNodeAirports_Airport, ' +
+            'CASE WHEN getNodeAirports_Airport_airportRoutesOut IS NULL THEN [] ' +
+            'ELSE COLLECT({' +
+            '_id:ID(getNodeAirports_Airport_airportRoutesOut), ' +
+            'code: getNodeAirports_Airport_airportRoutesOut.`code`, ' +
+            'city: getNodeAirports_Airport_airportRoutesOut.`city`, ' +
+            'country: getNodeAirports_Airport_airportRoutesOut.`country`' +
+            '})[..3] ' +
+            'END AS getNodeAirports_Airport_airportRoutesOut_collect\n' +
+            'RETURN collect({' +
+            '_id:ID(getNodeAirports_Airport), ' +
+            'code: getNodeAirports_Airport.`code`, ' +
+            'city: getNodeAirports_Airport.`city`, ' +
+            'country: getNodeAirports_Airport.`country`, ' +
+            'airportRoutesOut: getNodeAirports_Airport_airportRoutesOut_collect' +
+            '})[..5]',
+        parameters: {
+            getNodeAirports_Airport_country: "CA",
+            getNodeAirports_Airport_airportRoutesOut_code: "M",
+            getNodeAirports_Airport_airportRoutesOut_country: "M"
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
