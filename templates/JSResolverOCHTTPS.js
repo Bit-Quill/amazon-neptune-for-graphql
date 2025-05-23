@@ -40,6 +40,7 @@ export function resolveGraphDBQueryFromAppSyncEvent(event) {
     return resolveGraphDBQueryFromEvent({
         field: event.field,
         arguments: event.arguments,
+        variables: event.variables,
         selectionSet: event.selectionSetGraphQL ? gql`${event.selectionSetGraphQL}`.definitions[0].selectionSet : {}
     });
 }
@@ -642,7 +643,7 @@ function createQueryFieldLeafStatement(fieldSchemaInfo, lastNamePath) {
 }
 
 
-function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType) {
+function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables = {}) {
     const schemaTypeInfo = getSchemaTypeInfo(lastType, fieldSchemaInfo.name, lastNamePath);
 
     // check if the field has is a function with parameters, look for filters and options
@@ -673,7 +674,7 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
     }
 
     withStatements[thisWithId].content += '{';
-    selectionsRecurse(selection.selectionSet.selections, schemaTypeInfo.pathName, schemaTypeInfo.type, schemaTypeInfo.variables);
+    selectionsRecurse(selection.selectionSet.selections, schemaTypeInfo.pathName, schemaTypeInfo.type, variables);
     withStatements[thisWithId].content += '}';
 
     if (schemaTypeInfo.isArray) {
@@ -725,7 +726,7 @@ function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
             return
         }
 
-        createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType)
+        createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables)
     });
 };
 

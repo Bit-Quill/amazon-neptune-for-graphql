@@ -13,7 +13,7 @@ schemaDataModel = JSON.stringify(schemaDataModel, null, 2);
 const schemaModel = JSON.parse(schemaDataModel);
 initSchema(schemaModel);
 
-test('should resolve queries with a filter', () => {
+test('should resolve app sync event queries with a filter', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirport',
         arguments: { filter: { code: {eq: 'SEA'} } },
@@ -28,7 +28,7 @@ test('should resolve queries with a filter', () => {
     });
 });
 
-test('should resolve queries with an empty filter object', () => {
+test('should resolve app sync event queries with an empty filter object', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirport',
         arguments: { filter: {} },
@@ -44,7 +44,7 @@ test('should resolve queries with an empty filter object', () => {
     });
 });
 
-test('should resolve queries without a filter', () => {
+test('should resolve app sync event queries without a filter', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirport',
         arguments: {},
@@ -60,7 +60,7 @@ test('should resolve queries without a filter', () => {
     });
 });
 
-test('should resolve queries with a filter that contains numeric and string values', () => {
+test('should resolve app sync event queries with a filter that contains numeric and string values', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirports',
         arguments: { filter: { country: {eq: 'US'}, runways: 3 } },
@@ -76,7 +76,7 @@ test('should resolve queries with a filter that contains numeric and string valu
     });
 });
 
-test('should resolve queries with a string id filter', () => {
+test('should resolve app sync event queries with a string id filter', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirport',
         arguments: { filter: { _id: '22' } },
@@ -92,7 +92,7 @@ test('should resolve queries with a string id filter', () => {
     });
 });
 
-test('should resolve queries with an integer id filter', () => {
+test('should resolve app sync event queries with an integer id filter', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirport',
         arguments: { filter: { _id: 22 } },
@@ -108,7 +108,7 @@ test('should resolve queries with an integer id filter', () => {
     });
 });
 
-test('should resolve gremlin query with argument', () => {
+test('should resolve app sync event gremlin query with argument', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getAirportWithGremlin',
         arguments: { code: 'YVR' },
@@ -123,7 +123,7 @@ test('should resolve gremlin query with argument', () => {
     });
 });
 
-test('should resolve gremlin query without arguments or selection set', () => {
+test('should resolve app sync event gremlin query without arguments or selection set', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getCountriesCount',
         arguments: { },
@@ -134,6 +134,60 @@ test('should resolve gremlin query without arguments or selection set', () => {
         query: "g.V().hasLabel('country').count()",
         parameters: {},
         language: 'gremlin',
+        refactorOutput: null
+    });
+});
+
+test('should resolve app sync event with nested filters and variables', () => {
+    const result = resolveGraphDBQueryFromAppSyncEvent({
+        field: 'getNodeAirports',
+        arguments: {
+            filter: {
+                country: {
+                    eq: 'CA'
+                }
+            },
+            options: {
+                limit: 6
+            }
+        },
+        variables: {
+            filter: {
+                country: {
+                    eq: 'CA'
+                }
+            },
+            options: {
+                limit: 6
+            },
+            airportRoutesOutFilter2: {
+                country: {
+                    startsWith: "M"
+                }
+            },
+            airportRoutesOutOptions2: {
+                limit: 2
+            }
+        },
+        selectionSetGraphQL: '{ _id city, code, airportRoutesOut(filter: $airportRoutesOutFilter2, options: $airportRoutesOutOptions2) { _id, city, code } }'
+    });
+
+    expect(result).toMatchObject({
+        query: "MATCH (getNodeAirports_Airport:`airport`) " +
+            "WHERE getNodeAirports_Airport.country = $getNodeAirports_Airport_country " +
+            "WITH getNodeAirports_Airport LIMIT 6\n" +
+            "OPTIONAL MATCH (getNodeAirports_Airport)-[getNodeAirports_Airport_airportRoutesOut_route:route]->(getNodeAirports_Airport_airportRoutesOut:`airport`) " +
+            "WHERE getNodeAirports_Airport_airportRoutesOut.country STARTS WITH $getNodeAirports_Airport_airportRoutesOut_country\n" +
+            "WITH getNodeAirports_Airport, " +
+            "CASE WHEN getNodeAirports_Airport_airportRoutesOut IS NULL THEN [] " +
+            "ELSE COLLECT({_id:ID(getNodeAirports_Airport_airportRoutesOut), city: getNodeAirports_Airport_airportRoutesOut.`city`, code: getNodeAirports_Airport_airportRoutesOut.`code`})[..2] " +
+            "END AS getNodeAirports_Airport_airportRoutesOut_collect\n" +
+            "RETURN collect({_id:ID(getNodeAirports_Airport), city: getNodeAirports_Airport.`city`, code: getNodeAirports_Airport.`code`, airportRoutesOut: getNodeAirports_Airport_airportRoutesOut_collect})[..6]",
+        parameters: {
+            "getNodeAirports_Airport_country": "CA",
+            "getNodeAirports_Airport_airportRoutesOut_country": "M"
+        },
+        language: 'opencypher',
         refactorOutput: null
     });
 });
