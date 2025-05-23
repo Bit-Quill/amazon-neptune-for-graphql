@@ -1021,7 +1021,11 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
             returnBlock = returnStringOnly(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo);
         }
         const fields = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
-        const formattedFields = fields.map(field => `${edgeName}.${field.name} = ${field.value}`).join(',');
+        const formattedFields = fields.map(field => {
+            const param = querySchemaInfo.pathName + '_' + field.name;
+            Object.assign(parameters, { [param]: field.value });
+            return `${edgeName}.${field.name} = $${param}`;
+        }).join(',');
 
         const paramFromId  = edgeName + '_' + 'whereFromId';
         const paramToId  = edgeName + '_' + 'whereToId';
@@ -1053,8 +1057,14 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let ocQuery = querySchemaInfo.graphQuery;
 
         if (ocQuery.includes('$input')) {
-            const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
-            ocQuery = ocQuery.replace('$input', inputFields.fields);
+            const inputFields = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[0].value.fields, querySchemaInfo);
+            const formattedFields = inputFields.map(field => {
+                const param = querySchemaInfo.pathName + '_' + field.name;
+                Object.assign(parameters, { [param]: field.value });
+                return `${field.name}: $${param}`;
+            }).join(', ');
+            
+            ocQuery = ocQuery.replace('$input', formattedFields);
         } else {
             obj.definitions[0].selectionSet.selections[0].arguments.forEach(arg => {
                 ocQuery = ocQuery.replace('$' + arg.name.value, arg.value.value);

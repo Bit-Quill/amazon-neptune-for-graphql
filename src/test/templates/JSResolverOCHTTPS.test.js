@@ -138,7 +138,7 @@ test('should resolve app sync event gremlin query without arguments or selection
     });
 });
 
-test('should resolve app sync event with nested filters and variables', () => {
+test('should resolve app sync event with nested edge filters and variables', () => {
     const result = resolveGraphDBQueryFromAppSyncEvent({
         field: 'getNodeAirports',
         arguments: {
@@ -160,16 +160,16 @@ test('should resolve app sync event with nested filters and variables', () => {
             options: {
                 limit: 6
             },
-            airportRoutesOutFilter2: {
+            nestedFilter: {
                 country: {
                     startsWith: "M"
                 }
             },
-            airportRoutesOutOptions2: {
+            nestedOptions: {
                 limit: 2
             }
         },
-        selectionSetGraphQL: '{ _id city, code, airportRoutesOut(filter: $airportRoutesOutFilter2, options: $airportRoutesOutOptions2) { _id, city, code } }'
+        selectionSetGraphQL: '{ _id city, code, airportRoutesOut(filter: $nestedFilter, options: $nestedOptions) { _id, city, code } }'
     });
 
     expect(result).toMatchObject({
@@ -515,11 +515,12 @@ test('should resolve mutation to update edge between nodes', () => {
         query: 'MATCH (from)-[updateEdgeRouteFromAirportToAirport_Route:`route`]->(to)\n' +
             'WHERE ID(from) = $updateEdgeRouteFromAirportToAirport_Route_whereFromId ' +
             'AND ID(to) = $updateEdgeRouteFromAirportToAirport_Route_whereToId\n' +
-            'SET updateEdgeRouteFromAirportToAirport_Route.dist = 123\n' +
+            'SET updateEdgeRouteFromAirportToAirport_Route.dist = $updateEdgeRouteFromAirportToAirport_Route_dist\n' +
             'RETURN {_id:ID(updateEdgeRouteFromAirportToAirport_Route), dist: updateEdgeRouteFromAirportToAirport_Route.`dist`}',
         parameters: {
             updateEdgeRouteFromAirportToAirport_Route_whereFromId: '99',
-            updateEdgeRouteFromAirportToAirport_Route_whereToId: '48'
+            updateEdgeRouteFromAirportToAirport_Route_whereToId: '48',
+            updateEdgeRouteFromAirportToAirport_Route_dist: 123
         },
         language: 'opencypher',
         refactorOutput: null
@@ -783,6 +784,42 @@ test('should resolve query with nested edge filter and variables', () => {
         parameters: {
             getNodeAirports_Airport_country: "CA",
             getNodeAirports_Airport_airportRoutesOut_country: "M"
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
+
+test('should resolve custom mutation with @graphQuery directive and $input parameter', () => {
+    const query = 'mutation MyMutation {\n' +
+        '  createAirport(\n' +
+        '    input: {city: \"Test\", code: \"TEST\", country: \"CA\", desc: \"Test Airport\"}\n' +
+        '  ) {\n' +
+        '    _id\n' +
+        '    city\n' +
+        '    code\n' +
+        '    country\n' +
+        '  }\n' +
+        '}';
+    const result = resolveGraphDBQuery(query);
+
+    expect(result).toMatchObject({
+        query: 'CREATE (createAirport_Airport:airport {' +
+            'city: $createAirport_Airport_city, ' +
+            'code: $createAirport_Airport_code, ' +
+            'country: $createAirport_Airport_country, ' +
+            'desc: $createAirport_Airport_desc})\n' +
+            'RETURN {' +
+            '_id:ID(createAirport_Airport), ' +
+            'city: createAirport_Airport.`city`, ' +
+            'code: createAirport_Airport.`code`, ' +
+            'country: createAirport_Airport.`country`' +
+            '}',
+        parameters: {
+            createAirport_Airport_city: "Test",
+            createAirport_Airport_code: "TEST",
+            createAirport_Airport_country: "CA",
+            createAirport_Airport_desc: "Test Airport"
         },
         language: 'opencypher',
         refactorOutput: null

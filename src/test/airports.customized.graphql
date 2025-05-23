@@ -134,6 +134,7 @@ updateNodeAirport(input: AirportInput!): Airport
 connectNodeCountryToNodeAirportEdgeContains(from_id: ID!, to_id: ID!): Contains
 deleteEdgeContainsFromCountryToAirport(from_id: ID!, to_id: ID!): Boolean
 updateEdgeRouteFromAirportToAirport(from_id: ID!, to_id: ID!, edge: RouteInput!): Route
+createAirport(input: AirportInput!): Airport @graphQuery(statement: "CREATE (this:airport {$input}) RETURN this")
 }
 
 schema {
