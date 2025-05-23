@@ -427,7 +427,7 @@ test('should resolve mutation to connect nodes', () => {
     });
 });
 
-test('should resolve mutation to delete connection between nodes', () => {
+test('should resolve mutation to delete edge between nodes', () => {
     const query = 'mutation DeleteEdgeContainsFromCountryToAirport {\n' +
         '  deleteEdgeContainsFromCountryToAirport(from_id: \"ee71c547-ea32-4573-88bc-6ecb31942a1e\", to_id: \"99cb3321-9cda-41b6-b760-e88ead3e1ea1\")\n' +
         '}';
@@ -442,6 +442,30 @@ test('should resolve mutation to delete connection between nodes', () => {
         parameters: {
             deleteEdgeContainsFromCountryToAirport_Boolean_whereFromId: 'ee71c547-ea32-4573-88bc-6ecb31942a1e',
             deleteEdgeContainsFromCountryToAirport_Boolean_whereToId: '99cb3321-9cda-41b6-b760-e88ead3e1ea1'
+        },
+        language: 'opencypher',
+        refactorOutput: null
+    });
+});
+
+test('should resolve mutation to update edge between nodes', () => {
+    const query = 'mutation UpdateEdgeRouteFromAirportToAirport {\n' +
+        '  updateEdgeRouteFromAirportToAirport(from_id: \"99\", to_id: \"48\", edge: { dist: 123 }) {\n' +
+        '    _id\n' +
+        '    dist\n' +
+        '  }\n' +
+        '}';
+    const result = resolveGraphDBQuery(query);
+
+    expect(result).toMatchObject({
+        query: 'MATCH (from)-[updateEdgeRouteFromAirportToAirport_Route:`route`]->(to)\n' +
+            'WHERE ID(from) = $updateEdgeRouteFromAirportToAirport_Route_whereFromId ' +
+            'AND ID(to) = $updateEdgeRouteFromAirportToAirport_Route_whereToId\n' +
+            'SET updateEdgeRouteFromAirportToAirport_Route.dist = 123\n' +
+            'RETURN {_id:ID(updateEdgeRouteFromAirportToAirport_Route), dist: updateEdgeRouteFromAirportToAirport_Route.`dist`}',
+        parameters: {
+            updateEdgeRouteFromAirportToAirport_Route_whereFromId: '99',
+            updateEdgeRouteFromAirportToAirport_Route_whereToId: '48'
         },
         language: 'opencypher',
         refactorOutput: null

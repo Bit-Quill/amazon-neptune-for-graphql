@@ -1014,26 +1014,20 @@ function resolveGrapgDBqueryForGraphQLMutation (obj, querySchemaInfo) {
         let toID = obj.definitions[0].selectionSet.selections[0].arguments[1].value.value;
         let edgeType = querySchemaInfo.name.match(new RegExp('updateEdge' + "(.*)" + 'From'))[1];
         let egdgeTypeAlias = getTypeAlias(edgeType);
-        const inputFields = extractFiltersFromQueryArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
         const edgeName = querySchemaInfo.name + '_' + querySchemaInfo.returnType;
         let returnBlock = `ID(${edgeName})`;
         if (obj.definitions[0].selectionSet.selections[0].selectionSet != undefined) {
             returnBlock = returnStringOnly(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo);
         }
-        const propertyList = inputFields.fields.split(', ');
-        let setString = '';
-        propertyList.forEach(property => {
-            let kv = property.split(': ');
-            setString = setString + ` ${edgeName}.${kv[0]} = ${kv[1]},`;
-        });
-        setString = setString.substring(0, setString.length - 1);
+        const fields = extractCypherFieldsFromArgumentFields(obj.definitions[0].selectionSet.selections[0].arguments[2].value.fields, querySchemaInfo);
+        const formattedFields = fields.map(field => `${edgeName}.${field.name} = ${field.value}`).join(',');
 
         const paramFromId  = edgeName + '_' + 'whereFromId';
         const paramToId  = edgeName + '_' + 'whereToId';
         Object.assign(parameters, {[paramFromId]: fromID});
         Object.assign(parameters, {[paramToId]: toID});
 
-        const ocQuery = `MATCH (from)-[${edgeName}:$\`${egdgeTypeAlias}\`]->(to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nSET ${setString}\nRETURN ${returnBlock}`;
+        const ocQuery = `MATCH (from)-[${edgeName}:\`${egdgeTypeAlias}\`]->(to)\nWHERE ID(from) = $${paramFromId} AND ID(to) = $${paramToId}\nSET ${formattedFields}\nRETURN ${returnBlock}`;
         return  ocQuery;
     }
 

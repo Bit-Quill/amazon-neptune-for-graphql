@@ -133,6 +133,7 @@ createNodeAirport(input: AirportInput!): Airport
 updateNodeAirport(input: AirportInput!): Airport
 connectNodeCountryToNodeAirportEdgeContains(from_id: ID!, to_id: ID!): Contains
 deleteEdgeContainsFromCountryToAirport(from_id: ID!, to_id: ID!): Boolean
+updateEdgeRouteFromAirportToAirport(from_id: ID!, to_id: ID!, edge: RouteInput!): Route
 }
 
 schema {
