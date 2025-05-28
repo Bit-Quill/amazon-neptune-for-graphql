@@ -105,7 +105,7 @@ export function resolveGraphDBQueryFromEvent(event) {
         ]
     };
 
-    const graphQuery = resolveGraphDBQuery(obj, event.variables);
+    const graphQuery = resolveGraphDBQuery(obj, event.variables, event.fragments);
     return graphQuery;
 }
 
@@ -487,6 +487,7 @@ function createQueryFunctionMatchStatement(obj, matchStatements, querySchemaInfo
     } else {
         const selection = obj.definitions[0].selectionSet.selections[0];
         replaceVariableArgsWithValues(selection, querySchemaInfo.variables);
+        replaceFragmentSelections(selection, querySchemaInfo.fragments);
         const argsAndWhereClauses = extractQueryArgsAndWhereClauses(selection.arguments, querySchemaInfo);
         const queryArgs = argsAndWhereClauses?.queryArguments.length > 0 ? `{${argsAndWhereClauses.queryArguments.join(',')}}` : '';
         const whereClause = argsAndWhereClauses?.whereClauses.length > 0 ? ` WHERE ${argsAndWhereClauses.whereClauses.join(' AND ')}` : '';
@@ -655,7 +656,7 @@ function createQueryFieldLeafStatement(fieldSchemaInfo, lastNamePath) {
 }
 
 
-function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables = {}) {
+function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastNamePath, lastType, variables = {}, fragments = {}) {
     const schemaTypeInfo = getSchemaTypeInfo(lastType, fieldSchemaInfo.name, lastNamePath);
 
     // check if the field has is a function with parameters, look for filters and options
@@ -686,7 +687,7 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
     }
 
     withStatements[thisWithId].content += '{';
-    selectionsRecurse(selection.selectionSet.selections, schemaTypeInfo.pathName, schemaTypeInfo.type, variables);
+    selectionsRecurse(selection.selectionSet.selections, schemaTypeInfo.pathName, schemaTypeInfo.type, variables, fragments);
     withStatements[thisWithId].content += '}';
 
     if (schemaTypeInfo.isArray) {
@@ -727,11 +728,12 @@ function createTypeFieldStatementAndRecurse(selection, fieldSchemaInfo, lastName
 
 
 
-function selectionsRecurse(selections, lastNamePath, lastType, variables = {}) {
+function selectionsRecurse(selections, lastNamePath, lastType, variables = {}, fragments = {}) {
 
     selections.forEach(selection => {
         // replace any selection references to variables with the variable values
         replaceVariableArgsWithValues(selection, variables);
+        replaceFragmentSelections(selection, fragments);
         const fieldSchemaInfo = getSchemaFieldInfo(lastType, selection.name.value, lastNamePath);
 
         // check if is schema type
@@ -788,7 +790,7 @@ function resolveGrapgDBqueryForGraphQLQuery (obj, querySchemaInfo) {
 
     withStatements[0].content = '{';
 
-    selectionsRecurse(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo.pathName, querySchemaInfo.returnType, querySchemaInfo.variables);
+    selectionsRecurse(obj.definitions[0].selectionSet.selections[0].selectionSet.selections, querySchemaInfo.pathName, querySchemaInfo.returnType, querySchemaInfo.variables, querySchemaInfo.fragments);
 
     if (withStatements[0].content.slice(-2) == ', ')
         withStatements[0].content = withStatements[0].content.substring(0, withStatements[0].content.length - 2);
@@ -894,6 +896,32 @@ function replaceVariableArgsWithValues(selection, variables) {
     });
 }
 
+function replaceFragmentSelections(selection, fragments) {
+    // Early return if no selection set or selections
+    if (!selection?.selectionSet?.selections) {
+        return;
+    }
+
+    // Find all valid fragment spreads
+    const fragmentSpreads = selection.selectionSet.selections.reduce((acc, fragmentSelection, index) => {
+        if (fragmentSelection?.kind === 'FragmentSpread' &&
+            fragmentSelection?.name?.value &&
+            fragments[fragmentSelection.name.value]) {
+            acc.push({ fragmentSelection, index });
+        }
+        return acc;
+    }, []);
+
+    // Process fragments in reverse order to maintain correct indices
+    fragmentSpreads.reverse().forEach(({ fragmentSelection, index }) => {
+        const fragment = fragments[fragmentSelection.name.value];
+        if (!fragment?.selectionSet?.selections) {
+            return;
+        }
+        // Replace fragment spread with actual selections
+        selection.selectionSet.selections.splice(index, 1, ...fragment.selectionSet.selections);
+    });
+}
 
 /**
  * Extracts an array of cypher field name and value from the graphQL query argument fields.
@@ -945,7 +973,7 @@ function extractFiltersFromQueryArgumentFields(queryArgumentFields, schemaInfo) 
 
 function returnStringOnly(selections, querySchemaInfo) {
     withStatements.push({carryOver: querySchemaInfo.pathName, inLevel:'', content:''});
-    selectionsRecurse(selections, querySchemaInfo.pathName, querySchemaInfo.returnType, querySchemaInfo.variables);
+    selectionsRecurse(selections, querySchemaInfo.pathName, querySchemaInfo.returnType, querySchemaInfo.variables, querySchemaInfo.fragments);
     return `{${withStatements[0].content}}`
 }
 
@@ -1258,13 +1286,14 @@ function parseQueryInput(queryObjOrStr) {
  * @param variables optional query variables
  * @returns {string}
  */
-export function resolveGraphDBQuery(queryObjOrStr, variables = {}) {
+export function resolveGraphDBQuery(queryObjOrStr, variables = {}, fragments = {}) {
     let executeQuery =  { query:'', parameters: {}, language: 'opencypher', refactorOutput: null };
 
     const obj = parseQueryInput(queryObjOrStr);
 
     const querySchemaInfo = getSchemaQueryInfo(obj.definitions[0].selectionSet.selections[0].name.value);
     querySchemaInfo.variables = variables;
+    querySchemaInfo.fragments = fragments;
 
     if (querySchemaInfo.graphQuery != null) {
         if (querySchemaInfo.graphQuery.startsWith('g.V')) {
