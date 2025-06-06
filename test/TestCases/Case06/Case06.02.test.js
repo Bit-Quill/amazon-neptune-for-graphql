@@ -1,4 +1,4 @@
-import {checkFileContains, readJSONFile} from '../../testLib';
+import { checkFileContains, readJSONFile, testCdkArtifacts } from '../../testLib';
 import fs from "fs";
 
 const casetest = readJSONFile('./test/TestCases/Case06/case.json');
@@ -10,6 +10,8 @@ describe('Validate file content', () => {
     afterAll(async () => {
         fs.rmSync('./test/TestCases/Case06/output', {recursive: true});
     });
+    
+    testCdkArtifacts('./test/TestCases/Case06/output', 'AirportCDKTestJest');
 
     checkFileContains('./test/TestCases/Case06/output/AirportCDKTestJest-cdk.js', [
         'const NAME = \'AirportCDKTestJest\';',

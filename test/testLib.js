@@ -216,6 +216,30 @@ async function testApolloArtifacts(outputFolderPath, testDbInfo, subgraph = fals
     });
 }
 
+async function testCdkArtifacts(outputFolderPath, filePrefix) {
+    test('Validate cdk output artifacts', () => {
+        const expectedFiles = [
+            'index.mjs',
+            'node_modules',
+            'output.resolver.graphql.js',
+            'output.resolver.schema.json',
+            'package-lock.json',
+            'package.json',
+            'queryHttpNeptune.mjs'
+        ];
+
+        const files = fs.readdirSync(outputFolderPath);
+        const jsFiles = files.filter(file => file === `${filePrefix}-cdk.js`);
+        expect(jsFiles.length).toEqual(1);
+        
+        const zipFiles = files.filter(file => file.startsWith(filePrefix) && file.endsWith('.zip'));
+        expect(zipFiles.length).toEqual(1);
+
+        const actualFiles = unzipAndGetContents(path.join(outputFolderPath, 'cdk-unzipped'), path.join(outputFolderPath, zipFiles[0]));
+        expect(actualFiles.toSorted()).toEqual(expectedFiles.toSorted());
+    });
+}
+
 export {
     checkFileContains,
     checkFolderContainsFiles,
@@ -226,5 +250,6 @@ export {
     loadResolver,
     readJSONFile,
     testApolloArtifacts,
+    testCdkArtifacts,
     testResolverQueriesResults,
 };
