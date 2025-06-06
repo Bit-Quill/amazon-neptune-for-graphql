@@ -24,6 +24,6 @@ describe('Validate cdk pipeline with sdk resolver output content', () => {
 
         // resolver should be using aws sdk
         const fileContent = fs.readFileSync(path.join(unzippedFolder, 'index.mjs'), 'utf8');
-        expect(fileContent).toContain('@aws-sdk');
+        expect(fileContent).toContain('@aws-sdk/client-neptune');
     });
 });
