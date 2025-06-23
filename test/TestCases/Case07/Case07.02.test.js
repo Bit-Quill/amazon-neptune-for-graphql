@@ -48,7 +48,12 @@ describe('Validate pipeline with sdk resolver output content', () => {
         const awsResources = JSON.parse(fs.readFileSync(path.join(outputFolderPath, 'AirportsJestSDKTest-resources.json'), 'utf8'));
         const apiId = awsResources.AppSyncAPI;
         const region = awsResources.region;
-        const results = await executeAppSyncQuery(apiId, 'query {getNodeContinents {code}}', {}, region);
+        const results = await executeAppSyncQuery({
+            apiId: apiId,
+            query: 'query {getNodeContinents {code}}',
+            variables: {},
+            region: region
+        });
         const codes = results.data.getNodeContinents.map(continent => continent.code).sort();
         expect(codes).toEqual(['AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA']);
     }, 600000);
