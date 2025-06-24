@@ -1,3 +1,6 @@
+/**
+ * TODO merge query files in TestCases/Case01/queries into this file so that there is a single source for test queries
+ */
 export const QUERIES = [
     {
         description: 'get continents',

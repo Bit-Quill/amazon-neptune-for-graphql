@@ -5,7 +5,8 @@ const apiKey = process.env['APP_SYNC_API_KEY'];
 const region = process.env['APP_SYNC_REGION'];
 
 /**
- * This test can be used to manually execute graphQL queries against an App Sync API that is specified via environment variables.
+ * This test can be used to execute graphQL queries against an App Sync API that is specified via environment variables.
+ * This can be useful to test manually deployed App Sync APIs that were not created as part of the integration test suite.
  * It requires the following environment variables to be set:
  * APP_SYNC_API_ID: The ID of the App Sync API
  * APP_SYNC_API_KEY: The API key for the App Sync API
