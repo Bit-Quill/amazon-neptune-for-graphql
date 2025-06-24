@@ -1,19 +1,13 @@
-import { readJSONFile } from '../../testLib';
-import { main } from "../../../src/main";
+import { createAppSyncApiKey, executeTestAppSyncQueries } from '../../testLib';
+import path from "path";
 import fs from "fs";
 
-const casetest = readJSONFile('./test/TestCases/Case07/case02.json');
+const outputFolderPath = './test/TestCases/Case07/output';
+const awsResources = JSON.parse(fs.readFileSync(path.join(outputFolderPath, 'AirportsJestSDKTest-resources.json'), 'utf8'));
+const apiId = awsResources.AppSyncAPI;
+const region = awsResources.region;
+const apiKey = await createAppSyncApiKey(apiId, region);
 
-async function executeUtility() {    
-    process.argv = casetest.argv;
-    await main();
-}
-describe('Cleanup resources', () => {
-    afterAll(async () => {
-        fs.rmSync('./test/TestCases/Case07/output', {recursive: true});
-    });
-    
-    test('Execute utility: ' + casetest.argv.join(' '), async () => {
-        expect(await executeUtility()).not.toBe(null);
-    }, 600000);    
+describe(`Can query App Sync API successfully`, () => {
+    executeTestAppSyncQueries({apiId: apiId, region: region, apiKey: apiKey});
 });
