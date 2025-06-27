@@ -1,17 +1,43 @@
+enum SortingDirection {
+  ASC
+  DESC
+}
+
 type Continent {
   id: ID!
   code: String
   type: String
   desc: String
-  airportContainssOut(filter: AirportInput, options: Options): [Airport]
+  airportContainssOut(filter: AirportInput, options: Options, sort: [AirportSort!]): [Airport]
   contains: Contains
 }
 
 input ContinentInput {
   id: ID
+  code: StringScalarFilters
+  type: StringScalarFilters
+  desc: StringScalarFilters
+}
+
+input ContinentCreateInput {
+  id: ID
   code: String
   type: String
   desc: String
+}
+
+input ContinentUpdateInput {
+  id: ID!
+  code: String
+  type: String
+  desc: String
+}
+
+input ContinentSort {
+  id: SortingDirection
+  type: SortingDirection
+  code: SortingDirection
+  desc: SortingDirection
 }
 
 type Country {
@@ -19,15 +45,36 @@ type Country {
   code: String
   type: String
   desc: String
-  airportContainssOut(filter: AirportInput, options: Options): [Airport]
+  airportContainssOut(filter: AirportInput, options: Options, sort: [AirportSort!]): [Airport]
   contains: Contains
 }
 
 input CountryInput {
   _id: ID
+  code: StringScalarFilters
+  type: StringScalarFilters
+  desc: StringScalarFilters
+}
+
+input CountryCreateInput {
+  _id: ID
   code: String
   type: String
   desc: String
+}
+
+input CountryUpdateInput {
+  _id: ID!
+  code: String
+  type: String
+  desc: String
+}
+
+input CountrySort {
+  _id: SortingDirection
+  code: SortingDirection
+  type: SortingDirection
+  desc: SortingDirection
 }
 
 type Version {
@@ -41,11 +88,38 @@ type Version {
 
 input VersionInput {
   _id: ID
+  date: StringScalarFilters
+  code: StringScalarFilters
+  author: StringScalarFilters
+  type: StringScalarFilters
+  desc: StringScalarFilters
+}
+
+input VersionCreateInput {
+  _id: ID
   date: String
   code: String
   author: String
   type: String
   desc: String
+}
+
+input VersionUpdateInput {
+  _id: ID!
+  date: String
+  code: String
+  author: String
+  type: String
+  desc: String
+}
+
+input VersionSort {
+  _id: SortingDirection
+  date: SortingDirection
+  code: SortingDirection
+  author: SortingDirection
+  type: SortingDirection
+  desc: SortingDirection
 }
 
 type Airport {
@@ -65,14 +139,30 @@ type Airport {
   outboundRoutesCount: Int
   continentContainsIn: Continent
   countryContainsIn: Country
-  airportRoutesOut(filter: AirportInput, options: Options): [Airport]
-  airportRoutesIn(filter: AirportInput, options: Options): [Airport]
+  airportRoutesOut(filter: AirportInput, options: Options, sort: [AirportSort!]): [Airport]
+  airportRoutesIn(filter: AirportInput, options: Options, sort: [AirportSort!]): [Airport]
   contains: Contains
   route: Route
   outboundRoutesCountAdd: Int
 }
 
 input AirportInput {
+  _id: ID
+  country: StringScalarFilters
+  longest: Int
+  code: StringScalarFilters
+  city: StringScalarFilters
+  elev: Int
+  icao: StringScalarFilters
+  lon: Float
+  runways: Int
+  region: StringScalarFilters
+  type: StringScalarFilters
+  lat: Float
+  desc: StringScalarFilters
+}
+
+input AirportCreateInput {
   _id: ID
   country: String
   longest: Int
@@ -86,6 +176,37 @@ input AirportInput {
   type: String
   lat: Float
   desc: String
+}
+
+input AirportUpdateInput {
+  _id: ID!
+  country: String
+  longest: Int
+  code: String
+  city: String
+  elev: Int
+  icao: String
+  lon: Float
+  runways: Int
+  region: String
+  type: String
+  lat: Float
+  desc: String
+}
+
+input AirportSort {
+  country: SortingDirection
+  longest: SortingDirection
+  code: SortingDirection
+  city: SortingDirection
+  elev: SortingDirection
+  icao: SortingDirection
+  lon: SortingDirection
+  runways: SortingDirection
+  region: SortingDirection
+  type: SortingDirection
+  lat: SortingDirection
+  desc: SortingDirection
 }
 
 type Contains {
@@ -103,6 +224,14 @@ input RouteInput {
 
 input Options {
   limit: Int
+  offset: Int
+}
+
+input StringScalarFilters {
+  eq: String
+  contains: String
+  endsWith: String
+  startsWith: String
 }
 
 type Query {
@@ -112,13 +241,13 @@ type Query {
   getContinentsWithGremlin: [Continent]
   getCountriesCountGremlin: Int
   getNodeContinent(filter: ContinentInput): Continent
-  getNodeContinents(filter: ContinentInput, options: Options): [Continent]
+  getNodeContinents(filter: ContinentInput, options: Options, sort: [ContinentSort!]): [Continent]
   getNodeCountry(filter: CountryInput): Country
-  getNodeCountrys(filter: CountryInput, options: Options): [Country]
+  getNodeCountrys(filter: CountryInput, options: Options, sort: [CountrySort!]): [Country]
   getNodeVersion(filter: VersionInput): Version
-  getNodeVersions(filter: VersionInput, options: Options): [Version]
+  getNodeVersions(filter: VersionInput, options: Options, sort: [VersionSort!]): [Version]
   getNodeAirport(filter: AirportInput): Airport
-  getNodeAirports(filter: AirportInput, options: Options): [Airport]
+  getNodeAirports(filter: AirportInput, options: Options, sort: [AirportSort!]): [Airport]
   getAirportWithGremlin(code: String): Airport
   getCountriesCount: Int
 }
@@ -127,15 +256,15 @@ type Mutation {
   createAirport(input: AirportInput!): Airport
   addRoute(fromAirportCode: String, toAirportCode: String, dist: Int): Route
   deleteAirport(id: ID): Int
-  createNodeContinent(input: ContinentInput!): Continent
-  updateNodeContinent(input: ContinentInput!): Continent
+  createNodeContinent(input: ContinentCreateInput!): Continent
+  updateNodeContinent(input: ContinentUpdateInput!): Continent
   deleteNodeContinent(_id: ID!): Boolean
-  createNodeCountry(input: CountryInput!): Country
-  updateNodeCountry(input: CountryInput!): Country
+  createNodeCountry(input: CountryCreateInput!): Country
+  updateNodeCountry(input: CountryUpdateInput!): Country
   deleteNodeCountry(_id: ID!): Boolean
-  updateNodeVersion(input: VersionInput!): Version
-  createNodeAirport(input: AirportInput!): Airport
-  updateNodeAirport(input: AirportInput!): Airport
+  updateNodeVersion(input: VersionUpdateInput!): Version
+  createNodeAirport(input: AirportCreateInput!): Airport
+  updateNodeAirport(input: AirportUpdateInput!): Airport
   deleteNodeAirport(_id: ID!): Boolean
   connectNodeContinentToNodeAirportEdgeContains(from_id: ID!, to_id: ID!): Contains
   deleteEdgeContainsFromContinentToAirport(from_id: ID!, to_id: ID!): Boolean

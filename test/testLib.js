@@ -8,6 +8,7 @@ import { decompressGzipToString } from "../templates/util.mjs";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import { aws4Interceptor } from "aws4-axios";
 import { parseNeptuneEndpoint } from "../src/util.js";
+import { QUERIES } from './queries.js';
 
 const HOST_PLACEHOLDER = '<AIR_ROUTES_DB_HOST>';
 const PORT_PLACEHOLDER = '<AIR_ROUTES_DB_PORT>';
@@ -260,19 +261,25 @@ async function createAppSyncApiKey(apiId, region, description = 'jest test API k
  * @param {string} query - The GraphQL query to execute
  * @param {object} variables - Variables to use with the GraphQL query
  * @param {string} region - AWS region where the AppSync API is deployed
+ * @param {string} apiUrl - The optional API URL to use for the query - if not provided, the API URL will be retrieved from the API ID
  * @returns {Promise<object>} - The GraphQL query response
  */
-async function executeGraphQLQuery(apiId, apiKey, query, variables, region) {
+async function executeGraphQLQuery({apiId, apiKey, query, variables, region, apiUrl}) {
     try {
         const appSyncClient = new AppSyncClient({ region });
-        const getApiCommand = new GetGraphqlApiCommand({
-            apiId: apiId
-        });
-        const apiDetails = await appSyncClient.send(getApiCommand);
-        const apiUrl = apiDetails.graphqlApi.uris.GRAPHQL;
+        let url = apiUrl;
+        if (!url && apiId) {
+            const getApiCommand = new GetGraphqlApiCommand({
+                apiId: apiId
+            });
+            const apiDetails = await appSyncClient.send(getApiCommand);
+            url = apiDetails.graphqlApi.uris.GRAPHQL;
+        } else {
+            throw new Error('Either apiId or apiUrl must be provided');
+        }
         
         const response = await axios({
-            url: apiUrl,
+            url: url,
             method: 'post',
             headers: {
                 'Content-Type': 'application/json',
@@ -284,6 +291,11 @@ async function executeGraphQLQuery(apiId, apiKey, query, variables, region) {
             }
         });
 
+        if (response.data.errors) {
+            console.error('GraphQL query failed:', response.data.errors);
+            throw new Error('GraphQL query failed');
+        }
+        
         return response.data;
     } catch (error) {
         console.error('Error executing GraphQL query:', error);
@@ -302,11 +314,32 @@ async function executeGraphQLQuery(apiId, apiKey, query, variables, region) {
  * @param {string} apiKey - The optional API key to use for authentication - if not provided, a new API key will be created
  * @returns {Promise<object>} - The GraphQL query response
  */
-async function executeAppSyncQuery(apiId, query, variables, region, apiKey) {
+async function executeAppSyncQuery({apiId, query, variables, region, apiKey}) {
     if (!apiKey) {
         apiKey = await createAppSyncApiKey(apiId, region);
     }
-    return executeGraphQLQuery(apiId, apiKey, query, variables, region);
+    return executeGraphQLQuery({
+        apiId: apiId,
+        apiKey: apiKey,
+        query: query,
+        variables: variables,
+        region: region
+    });
+}
+
+function executeTestAppSyncQueries({apiId, region, apiKey}) {
+    QUERIES.forEach(query => {
+        test(`Execute query: ${query.description}`, async () => {
+            const response = await executeAppSyncQuery({
+                apiId: apiId,
+                query: query.query,
+                variables: query.variables,
+                region: region,
+                apiKey: apiKey
+            });
+            query.validation(response);
+        }, 600000);
+    });
 }
 
 export {
@@ -316,7 +349,7 @@ export {
     compareFileContents,
     createAppSyncApiKey,
     executeAppSyncQuery,
-    executeGraphQLQuery,
+    executeTestAppSyncQueries,
     loadResolver,
     readJSONFile,
     testApolloArtifacts,
